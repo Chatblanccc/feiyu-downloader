@@ -27,7 +27,9 @@ jobs:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
       - name: Install SDK
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+        run: |
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+          python3 AndroidDownloader/scripts/normalize_sdk.py "$ANDROID_HOME"
       - name: Offline acceptance receipt tests
         run: python3 -m unittest discover -s AndroidDownloader/scripts -p 'test_*.py' -v
       - name: Build source and run checks
