@@ -584,30 +584,30 @@ final class DownloadCoreTests: XCTestCase {
 
     func testRSSBudgetStopsRealAllocatingDescendant() async throws {
         let start = Date(), pids = FixturePIDRecorder()
+        // A shell leader stays small on both CLT and hosted-Xcode machines.
+        // Launch Python as the descendant instead of forking a Python leader:
+        // some hosted Python runtimes exceed the old 32 MiB budget themselves.
         let script = """
-        import os,signal,time
-        print('ROOT:'+str(os.getpid()),flush=True)
-        child=os.fork()
-        if child == 0:
-            signal.signal(signal.SIGTERM,signal.SIG_IGN)
-            print('CHILD:'+str(os.getpid()),flush=True)
-            payload=bytearray(64*1024*1024)
-            for i in range(0,len(payload),4096): payload[i]=1
-            time.sleep(20)
-        else:
-            time.sleep(20)
+        printf 'ROOT:%s\\n' "$$"
+        /usr/bin/python3 -c 'import os,signal,time
+        signal.signal(signal.SIGTERM,signal.SIG_IGN)
+        print("CHILD:"+str(os.getpid()),flush=True)
+        payload=bytearray(128*1024*1024)
+        for i in range(0,len(payload),4096): payload[i]=1
+        time.sleep(20)' &
+        wait
         """
         do {
-            _ = try await FoundationProcessRunner().run(ProcessCommand(executable: URL(fileURLWithPath: "/usr/bin/python3"), arguments: ["-c", script],
-                timeout: 5, maximumMemoryBytes: 32 * 1_024 * 1_024)) { pids.record($0.line) }
+            _ = try await FoundationProcessRunner().run(ProcessCommand(executable: URL(fileURLWithPath: "/bin/sh"), arguments: ["-c", script],
+                timeout: 8, maximumMemoryBytes: 96 * 1_024 * 1_024)) { pids.record($0.line) }
             XCTFail("The descendant's real allocated pages must exceed the group budget")
         } catch DownloadError.memoryLimitExceeded { }
         let elapsed = Date().timeIntervalSince(start)
-        XCTAssertLessThan(elapsed, 3)
+        XCTAssertLessThan(elapsed, 5)
         XCTAssertTrue(pids.values.count >= 2)
         for pid in pids.values { XCTAssertFalse(FixturePIDRecorder.isAlive(pid)) }
         CoreResourceReport.record("rss_limit_real_descendant", elapsed: elapsed,
-            detail: ["rssBudgetBytes": 32 * 1_024 * 1_024, "allocatedTouchedBytes": 64 * 1_024 * 1_024, "sampleIntervalSeconds": 0.5, "allFixturePIDsStopped": true])
+            detail: ["rssBudgetBytes": 96 * 1_024 * 1_024, "allocatedTouchedBytes": 128 * 1_024 * 1_024, "sampleIntervalSeconds": 0.5, "allFixturePIDsStopped": true])
     }
 
     func testFastExitRaceDoesNotRejectOrLeakFileDescriptors() async throws {

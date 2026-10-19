@@ -52,7 +52,7 @@ final class SubtitleApplicationModel: ObservableObject {
     @Published var style = SubtitleStyle.default {
         didSet {
             if savesStylePreferences, let data = try? JSONEncoder().encode(style) {
-                UserDefaults.standard.set(data, forKey: "subtitleBurnStyle.v1")
+                AppTools.preferences?.set(data, forKey: "subtitleBurnStyle.v1")
             }
         }
     }
@@ -73,16 +73,13 @@ final class SubtitleApplicationModel: ObservableObject {
     private var savesStylePreferences = false
 
     init(historyFile: URL? = nil, executable: URL? = nil) {
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-        destination = downloads.appendingPathComponent("飞羽下载/字幕", isDirectory: true)
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("FeatherDownloader", isDirectory: true)
-        historyURL = historyFile ?? support.appendingPathComponent("subtitle-history.json")
+        destination = AppTools.downloadsDirectory.appendingPathComponent("字幕", isDirectory: true)
+        historyURL = historyFile ?? AppTools.supportDirectory.appendingPathComponent("subtitle-history.json")
         receiptsURL = historyURL.deletingLastPathComponent().appendingPathComponent("subtitle-receipts", isDirectory: true)
         engine = SubtitleEngine(executable: executable ?? Bundle.main.executableURL!, ffmpeg: AppTools.paths.ffmpeg)
-        if historyFile == nil, let data = UserDefaults.standard.data(forKey: "subtitleBurnStyle.v1"),
+        if historyFile == nil, let data = AppTools.preferences?.data(forKey: "subtitleBurnStyle.v1"),
            let saved = try? JSONDecoder().decode(SubtitleStyle.self, from: data) { style = saved }
-        savesStylePreferences = historyFile == nil
+        savesStylePreferences = historyFile == nil && AppTools.testDataDirectory == nil
         restore()
         languageTask = Task { [weak self] in
             async let sources = NativeSpeech.languages()
@@ -101,6 +98,9 @@ final class SubtitleApplicationModel: ObservableObject {
     var current: SubtitleHistoryItem? { records.first }
     var canStart: Bool { !isBusy && !shuttingDown && !languagesLoading && inputURL != nil && !source.isEmpty && (textMode == .original || !target.isEmpty) }
     var sameLanguage: Bool { NativeTranslation.sameLanguage(source, target) }
+    var hasActiveWorkForUpdate: Bool {
+        isBusy || languagesLoading || worker != nil || engineTask != nil || preparation.isPreparing
+    }
 
     func selectFile(_ url: URL) {
         guard !isBusy else { return }

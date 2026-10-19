@@ -24,7 +24,7 @@ const ui = {
   source: 'en', target: 'zh', textMode: 'bilingual', videoMode: 'burned', input: '',
   style: { ...DEFAULT_STYLE }, previewBusy: false, previewHidden: false, adding: false, preparing: false,
   starting: false, initialized: false, lastStyle: null, languageSignature: '',
-  styleTimer: null, unsub: null, downloadRows: new Map(), subtitleRows: new Map(), lastNotice: null
+  styleTimer: null, unsub: null, unsubUpdate: null, updateBusy: false, downloadRows: new Map(), subtitleRows: new Map(), lastNotice: null
 };
 
 function node(tag, className, text) {
@@ -481,6 +481,43 @@ function buildSubtitleRow(item) {
   if (completed(item)) addResultActions(actions, item);
   copy.append(actions); row.append(copy); return row;
 }
+function renderUpdate(update = ui.state.update || {}) {
+  ui.state.update = update;
+  const status = update.status || 'idle';
+  const titles = { idle: '软件更新', unavailable: '软件更新', checking: '正在检查更新…', 'up-to-date': '已是最新版本', available: `发现新版本 ${update.version || ''}`, downloading: '正在下载更新…', cancelling: '正在取消下载…', cancelled: '已取消下载', downloaded: '更新已下载', installing: '正在保存并安装更新…', error: '更新暂未完成' };
+  setText('update-title', titles[status] || '软件更新');
+  let detail = '点击检查 GitHub 上的新版本。';
+  if (status === 'unavailable') detail = '检查更新仅适用于安装后的 Windows 版本。';
+  else if (status === 'checking') detail = '正在连接 GitHub，请稍候。';
+  else if (status === 'up-to-date') detail = `当前版本 ${update.currentVersion || ''} 已是最新版本。`;
+  else if (status === 'available') detail = `新版本 ${update.version} · ${bytes(update.size)}。下载完成后由你确认重启更新。`;
+  else if (status === 'downloading') detail = `${bytes(update.progress?.transferred)} / ${bytes(update.progress?.total || update.size)}${update.progress?.bytesPerSecond ? ` · ${bytes(update.progress.bytesPerSecond)}/s` : ''}`;
+  else if (status === 'cancelling') detail = '正在停止下载，请稍候。';
+  else if (status === 'cancelled') detail = '可以重新检查更新后再次下载。';
+  else if (status === 'downloaded') detail = update.installBlocked ? update.busyMessage : `新版本 ${update.version} 已完成校验，点击「重启并更新」即可安装。`;
+  else if (status === 'installing') detail = '正在保存设置和历史记录，随后将重新打开飞羽下载。';
+  else if (status === 'error') detail = '请根据下方提示重试。';
+  setText('update-detail', detail);
+  setText('update-notes', shortText(update.notes, 16000));
+  $('update-notes').hidden = !update.notes;
+  $('update-progress').hidden = !['downloading', 'cancelling'].includes(status);
+  $('update-progress').value = Number(update.progress?.percent) || 0;
+  setText('update-error', update.error || ''); $('update-error').hidden = !update.error;
+  const working = ui.updateBusy || ['checking', 'downloading', 'cancelling', 'installing'].includes(status);
+  $('update-check').disabled = working || ['unavailable', 'downloaded'].includes(status);
+  $('check-for-updates').disabled = working;
+  $('update-download').hidden = status !== 'available'; $('update-download').disabled = ui.updateBusy;
+  $('update-cancel').hidden = !['downloading', 'cancelling'].includes(status); $('update-cancel').disabled = status === 'cancelling';
+  $('update-install').hidden = status !== 'downloaded'; $('update-install').disabled = ui.updateBusy || !!update.installBlocked;
+}
+async function updateAction(method) {
+  if (ui.updateBusy) return;
+  ui.updateBusy = true; renderUpdate();
+  try { renderUpdate(await call(method)); }
+  catch (error) { renderUpdate({ ...ui.state.update, error: errorMessage(error) }); }
+  finally { ui.updateBusy = false; renderUpdate(); }
+}
+
 function renderState(state) {
   if (!state || typeof state !== 'object') return;
   ui.state = { ...ui.state, ...state, settings: { ...ui.state.settings, ...state.settings }, models: { ...ui.state.models, ...state.models } };
@@ -496,6 +533,7 @@ function renderState(state) {
   setText('sidebar-version', version || 'Windows');
   setText('footer-version', `飞羽下载 ${version || 'Windows 版'}`);
   setText('about-version', `Windows 版${version ? ` · ${version}` : ''}`);
+  renderUpdate();
   const disabled = ui.adding || !toolsReady() || !$('share-text').value.trim();
   $('download-button').disabled = disabled;
   $('preview-button').disabled = ui.previewBusy || !toolsReady() || !$('share-text').value.trim();
@@ -553,6 +591,11 @@ const openDownloads = () => {
 ['open-downloads', 'queue-folder', 'footer-folder'].forEach((id) => $(id).addEventListener('click', openDownloads));
 $('settings-button').addEventListener('click', () => $('settings-dialog').showModal());
 $('about-button').addEventListener('click', () => $('about-dialog').showModal());
+$('check-for-updates').addEventListener('click', () => { $('about-dialog').showModal(); void updateAction('checkUpdate'); });
+$('update-check').addEventListener('click', () => updateAction('checkUpdate'));
+$('update-download').addEventListener('click', () => updateAction('downloadUpdate'));
+$('update-cancel').addEventListener('click', async () => { try { renderUpdate(await call('cancelUpdate')); } catch (error) { notice(errorMessage(error), true); } });
+$('update-install').addEventListener('click', () => updateAction('installUpdate'));
 $('change-directory').addEventListener('click', async () => {
   const result = await action('chooseDownloadDirectory'), path = pathValue(result);
   if (path) { ui.state.settings.destination = path; await action('saveSettings', { destination: path }); applySettings(ui.state.settings); }
@@ -585,7 +628,7 @@ $('start-subtitle').addEventListener('click', async () => {
   finally { ui.starting = false; renderSubtitleControls(); }
 });
 $('cancel-subtitle').addEventListener('click', () => action('cancelSubtitle'));
-window.addEventListener('beforeunload', () => { clearTimeout(ui.styleTimer); if (typeof ui.unsub === 'function') ui.unsub(); });
+window.addEventListener('beforeunload', () => { clearTimeout(ui.styleTimer); if (typeof ui.unsub === 'function') ui.unsub(); if (typeof ui.unsubUpdate === 'function') ui.unsubUpdate(); });
 new ResizeObserver(fitPreviewCaption).observe($('style-preview'));
 
 renderStyle();
@@ -597,6 +640,7 @@ if (!api) {
   notice('应用连接尚未准备好，请关闭并重新打开飞羽下载。', true);
   $('start-subtitle').disabled = true;
 } else {
+  if (typeof api.onUpdate === 'function') ui.unsubUpdate = api.onUpdate(renderUpdate);
   try { ui.unsub = api.onState((state) => renderState(state)); }
   catch (error) { notice(errorMessage(error), true); }
   call('getState').then(renderState).catch((error) => notice(errorMessage(error), true));

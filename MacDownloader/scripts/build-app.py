@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the native app and a drag-to-Applications DMG without global installs."""
 from pathlib import Path
+import base64
 import hashlib
 import json
 import plistlib
@@ -14,12 +15,21 @@ OUTPUT = ROOT / "outputs"
 APP = OUTPUT / "飞羽下载.app"
 RELEASE = json.loads((PROJECT / "Release.json").read_text())
 VERSION = RELEASE["version"]
-SUBTITLE_RELEASE = tuple(int(part) for part in VERSION.split(".")[:2]) >= (0, 2)
+UPDATE_FEED = "https://raw.githubusercontent.com/Chatblanccc/feiyu-downloader/main/updates/macos/appcast.xml"
 
 def run(*args, **kwargs):
     subprocess.run([str(a) for a in args], check=True, **kwargs)
 
 def main():
+    public_key_path = ROOT / "updates" / "macos" / "public-key.txt"
+    if not public_key_path.is_file():
+        raise SystemExit("Missing Sparkle public key: " + str(public_key_path))
+    public_key = public_key_path.read_text().strip()
+    try:
+        if len(base64.b64decode(public_key, validate=True)) != 32:
+            raise ValueError("Ed25519 public keys must contain 32 bytes")
+    except ValueError as error:
+        raise SystemExit("Invalid Sparkle public key: " + str(error))
     OUTPUT.mkdir(parents=True, exist_ok=True)
     shutil.copy2(PROJECT / "Resources" / "使用说明.txt", OUTPUT / "使用说明.txt")
     for name in ["yt-dlp", "ffmpeg", "ffprobe", "deno"]:
@@ -41,6 +51,15 @@ def main():
     (contents / "MacOS").mkdir(parents=True)
     tools.mkdir(parents=True)
     shutil.copy2(bin_path / "FeatherApp", contents / "MacOS" / "FeatherApp")
+    frameworks = list((PROJECT / ".build" / "artifacts").glob("**/macos-*/Sparkle.framework"))
+    if len(frameworks) != 1:
+        raise SystemExit("Expected exactly one Sparkle macOS framework from the pinned Swift package")
+    sparkle = contents / "Frameworks" / "Sparkle.framework"
+    sparkle.parent.mkdir()
+    # Sparkle's versioned framework and helper bundles require their symlinks
+    # and executable permissions. Preserve the vendor's nested code signatures.
+    shutil.copytree(frameworks[0], sparkle, symlinks=True)
+    run("codesign", "--verify", "--deep", "--strict", "--verbose=2", sparkle)
     # This CLT/SwiftPM combination labels LC_BUILD_VERSION.sdk as the minimum
     # deployment version. Record the actual installed SDK while retaining minOS 13.
     sdk_version = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-version"], text=True).strip()
@@ -53,11 +72,13 @@ def main():
         shutil.copy2(VENDOR / name, tools / name)
         (tools / name).chmod(0o755)
     shutil.copytree(VENDOR / "licenses", resources / "Licenses")
+    sparkle_license = PROJECT / ".build" / "artifacts" / "sparkle" / "Sparkle" / "LICENSE"
+    if not sparkle_license.is_file():
+        raise SystemExit("Missing Sparkle license in the verified Swift package artifact")
+    shutil.copy2(sparkle_license, resources / "Licenses" / "Sparkle-LICENSE.txt")
     shutil.copy2(VENDOR / "tools-manifest.json", resources / "tools-manifest.json")
-    report_names = ["platform-results.json", "resource-results.json"] + (["subtitle-results.json"] if SUBTITLE_RELEASE else [])
-    for name in report_names:
-        if (PROJECT / "Validation" / name).exists():
-            shutil.copy2(PROJECT / "Validation" / name, resources / name)
+    # Local validation reports can contain private source URLs and do not describe
+    # this release. Keep them outside the distributable application bundle.
     iconset = ROOT / "work" / "Feather.iconset"
     run("swift", PROJECT / "scripts" / "make-icon.swift", iconset)
     run("iconutil", "-c", "icns", iconset, "-o", resources / "Feather.icns")
@@ -76,11 +97,20 @@ def main():
         "LSApplicationCategoryType": "public.app-category.video",
         "NSHighResolutionCapable": True,
         "NSHumanReadableCopyright": "飞羽下载 · 2026",
-        "NSPrincipalClass": "NSApplication"
+        "NSPrincipalClass": "NSApplication",
+        "SUFeedURL": UPDATE_FEED,
+        "SUPublicEDKey": public_key,
+        "SUEnableAutomaticChecks": False,
+        "SUAutomaticallyUpdate": False,
+        "SUAllowsAutomaticUpdates": False,
+        "SUSendProfileInfo": False,
+        "SUVerifyUpdateBeforeExtraction": True,
+        "SURequireSignedFeed": True
     }
     with (contents / "Info.plist").open("wb") as file:
         plistlib.dump(info, file)
-    # Sign tools first, then seal the containing app. No Developer ID is assumed.
+    # Sign our tools first, preserve Sparkle's upstream helper signatures, then
+    # seal the app. No Hardened Runtime/Developer ID is assumed for local builds.
     for name in ["yt-dlp", "ffmpeg", "ffprobe", "deno"]:
         run("codesign", "--force", "--sign", "-", "--timestamp=none", tools / name)
     manifest["packagedFilesAfterLocalSigning"] = [

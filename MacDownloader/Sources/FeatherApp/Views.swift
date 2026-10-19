@@ -8,6 +8,7 @@ private let featherInk = Color(red: 0.13, green: 0.17, blue: 0.23)
 
 struct FeatherRootView: View {
     @EnvironmentObject private var model: ApplicationModel
+    @EnvironmentObject private var updater: AppUpdater
 
     var body: some View {
         HStack(spacing: 0) {
@@ -18,7 +19,22 @@ struct FeatherRootView: View {
                 Divider().opacity(0.45)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
-                        if model.selectedSection == .subtitles {
+                        if updater.isWaitingToRelaunch {
+                            HStack(spacing: 10) {
+                                ProgressView().controlSize(.small)
+                                Text(updater.status).font(.system(size: 12)).foregroundStyle(.secondary)
+                            }
+                        }
+                        if updater.requiresRestart {
+                            VStack(alignment: .leading, spacing: 14) {
+                                Label("请重新打开飞羽下载", systemImage: "arrow.clockwise.circle")
+                                    .font(.system(size: 18, weight: .semibold))
+                                Text(updater.status).font(.system(size: 13)).foregroundStyle(.secondary)
+                                Button("退出飞羽下载") { updater.quitForRecovery() }.buttonStyle(.borderedProminent)
+                            }
+                            .padding(24).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        } else if model.selectedSection == .subtitles {
                             if #available(macOS 26, *) {
                                 SubtitleWorkspaceView(model: model.subtitleFeature.model, downloads: model.items)
                             } else {
@@ -41,8 +57,8 @@ struct FeatherRootView: View {
         }
         .frame(minWidth: 900, minHeight: 650)
         .tint(featherBlue)
-        .sheet(isPresented: $model.showSettings) { FeatherSettingsView().environmentObject(model).preferredColorScheme(.light) }
-        .sheet(isPresented: $model.showAbout) { FeatherAboutView().preferredColorScheme(.light) }
+        .sheet(isPresented: $model.showSettings) { FeatherSettingsView().environmentObject(model).environmentObject(model.updater).preferredColorScheme(.light) }
+        .sheet(isPresented: $model.showAbout) { FeatherAboutView().environmentObject(model.updater).preferredColorScheme(.light) }
         .alert("飞羽下载", isPresented: Binding(get: { model.notification != nil }, set: { if !$0 { model.notification = nil } })) {
             Button("好", role: .cancel) { model.notification = nil }
         } message: { Text(model.notification ?? "") }
@@ -634,6 +650,7 @@ struct DownloadRow: View {
 
 struct FeatherSettingsView: View {
     @EnvironmentObject private var model: ApplicationModel
+    @EnvironmentObject private var updater: AppUpdater
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(alignment: .leading, spacing: 23) {
@@ -664,6 +681,16 @@ struct FeatherSettingsView: View {
                     .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(4)
             }
             Divider()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("软件更新", systemImage: "arrow.triangle.2.circlepath").font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    CheckForUpdatesButton(updater: updater)
+                }
+                Text("当前版本 \(AppTools.version) · \(updater.status)")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
+            }
+            Divider()
             Text("若解析失败，可检查网络或选择登录凭据后重试。平台的登录、地区和访问条件会影响可下载内容，失败原因会保留在任务中。")
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(3)
         }.padding(28).frame(width: 560).tint(featherBlue)
@@ -671,6 +698,7 @@ struct FeatherSettingsView: View {
 }
 
 struct FeatherAboutView: View {
+    @EnvironmentObject private var updater: AppUpdater
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(spacing: 15) {
@@ -678,13 +706,16 @@ struct FeatherAboutView: View {
             Text("飞羽下载").font(.system(size: 24, weight: .semibold))
             Text("Feather · \(AppTools.version) · Apple silicon · macOS 13+").font(.system(size: 11)).foregroundStyle(.secondary)
             Text("把喜欢的视频，留在手边。") .font(.system(size: 13)).foregroundStyle(.secondary)
+            CheckForUpdatesButton(updater: updater)
+            Text(updater.status).font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
             Divider().padding(.vertical, 4)
-            Text("下载与媒体处理由 yt-dlp、FFmpeg 和 Deno 提供。\n本软件独立开发，与直播蜂及视频平台没有关联。")
+            Text("下载与媒体处理由 yt-dlp、FFmpeg 和 Deno 提供，\n软件更新由 Sparkle 提供。\n本软件独立开发，与直播蜂及视频平台没有关联。")
                 .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center).lineSpacing(5)
             HStack(spacing: 17) {
                 Link("yt-dlp", destination: URL(string: "https://github.com/yt-dlp/yt-dlp")!)
                 Link("FFmpeg", destination: URL(string: "https://ffmpeg.org/")!)
                 Link("Deno", destination: URL(string: "https://deno.com/")!)
+                Link("Sparkle", destination: URL(string: "https://sparkle-project.org/")!)
             }.font(.system(size: 11))
             Button("完成") { dismiss() }.keyboardShortcut(.defaultAction).padding(.top, 8)
         }.padding(34).frame(width: 430).tint(featherBlue)
