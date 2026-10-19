@@ -6,23 +6,16 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <link>https://github.com/Chatblanccc/feiyu-downloader/releases</link>
     <description>用户主动检查的稳定版本更新</description>
     <item>
-      <title>飞羽下载 0.4.1</title>
-      <pubDate>Mon, 19 Oct 2026 06:47:57 +0000</pubDate>
-      <sparkle:version>10</sparkle:version>
-      <sparkle:shortVersionString>0.4.1</sparkle:shortVersionString>
+      <title>飞羽下载 0.5.0</title>
+      <pubDate>Mon, 19 Oct 2026 14:40:36 +0000</pubDate>
+      <sparkle:version>12</sparkle:version>
+      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <description># 飞羽下载 0.4.1
-
-- 软件内的品牌标志统一使用正式的飞羽图标，修正 macOS、Windows 侧栏仍显示通用下载箭头的问题。
-- macOS“关于”窗口同步使用相同标志。
-- 保留 0.4.0 的 GitHub 检查更新、覆盖升级与数据保存行为。
-
-本版为测试包；平台签名和 Windows 实机更新验证边界与 0.4.0 相同。
-</description>
-      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.4.1/FeiyuDownload-0.4.1-macOS-arm64.zip" length="83712625" type="application/octet-stream" sparkle:edSignature="cf6HhzTTCV0ryshqCtSknObbUrNvH6LcmY6pAqCwH+/RuDCv0wY/QfEkXU/klsmV2888z+jeHquOJk7y/W2WBA==" sparkle:os="macos"></enclosure>
+      <description>新增本地 AI 视频修复、整片画质增强和实验性局部修复；HLS/DASH 使用 8 个分片并发。此为测试版，AI 补画不能保证真实还原。保留现有下载记录。</description>
+      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.5.0/FeiyuDownload-0.5.0-macOS-arm64.zip" length="438302385" type="application/octet-stream" sparkle:edSignature="b89vLklgw3ftkHD4ZmuxWT3k6aKLSw0psgMw2IHfXj1q6blfy41QdRq5dTpOxgZBp1VTGojEPP9Leo825ZlFAA==" sparkle:os="macos"></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: T9ozDLNYn0QAIWFxu1sFrdA3tsFoiqPheayN8woVY05TO2wtWNKwHeh8uT2fW8ZQ4Hq7NWPVsLPE8nBOgdsUAw==
-length: 1638
+edSignature: R86lyW4A11HomXsb4ETYu8WjFa8IRPFrdMDijDKL5F5Kv7rDEiHgtgr+zM3moqp+FDfrqEL49EJyuh+kFyIaDg==
+length: 1458
 -->
