@@ -306,6 +306,32 @@ private actor UILifecycleEngine: DownloadServing {
             checks["updateAbortAfterShutdownOffersRestartRecovery"] = recoveryHandlerCalled && recoveryUpdater.requiresRestart
                 && !recoveryUpdater.isWaitingToRelaunch && recoveryUpdater.status.contains("退出后重新打开")
 
+            let sheetModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-sheet.json"))
+            let sheetUpdater = AppUpdater(model: sheetModel)
+            sheetModel.showAbout = true
+            sheetModel.showSettings = true
+            sheetModel.notification = "Offline sheet fixture"
+            var sheetStillAttached = true
+            var sheetHandlerCalled = false
+            sheetUpdater.prepareToRelaunch(presentationIsBlocking: { sheetStillAttached }) { sheetHandlerCalled = true }
+            try await Task.sleep(nanoseconds: 150_000_000)
+            checks["updateDismissesOwnedSheetsAndWaitsForActualDetachment"] = !sheetModel.showAbout && !sheetModel.showSettings
+                && sheetModel.notification == nil && !sheetHandlerCalled && sheetUpdater.status.contains("关闭打开的对话框")
+            sheetStillAttached = false
+            try await Task.sleep(nanoseconds: 200_000_000)
+            checks["updateInvokesInstallerOnlyAfterSheetDetaches"] = sheetHandlerCalled
+
+            let modalAbortModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-modal-abort.json"))
+            let modalAbortUpdater = AppUpdater(model: modalAbortModel)
+            var modalAbortHandlerCalled = false
+            var modalAbortAttached = true
+            modalAbortUpdater.prepareToRelaunch(presentationIsBlocking: { modalAbortAttached }) { modalAbortHandlerCalled = true }
+            try await Task.sleep(nanoseconds: 150_000_000)
+            modalAbortUpdater.handleUpdateAbort(NSError(domain: "OfflineUpdateFixture", code: 3))
+            modalAbortAttached = false
+            try await Task.sleep(nanoseconds: 200_000_000)
+            checks["abortedUpdateCannotInstallAfterModalDetaches"] = !modalAbortHandlerCalled && modalAbortUpdater.requiresRestart
+
             let migrationHistory = directory.appendingPathComponent("legacy-x-errors.json")
             let oldFailure = "视频不可用，可能已删除、设为私密或限制了访问地区。"
             var legacy: [DownloadItem] = []

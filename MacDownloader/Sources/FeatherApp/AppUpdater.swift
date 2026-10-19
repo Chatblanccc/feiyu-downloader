@@ -44,6 +44,7 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     func checkForUpdates() {
         start()
         guard canCheckForUpdates, !isWaitingToRelaunch, !requiresRestart else { return }
+        dismissAppPresentations()
         status = "正在检查 GitHub 上的最新版本…"
         controller?.checkForUpdates(nil)
     }
@@ -90,7 +91,9 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     /// Also exercised by the offline lifecycle checks without an update server or
     /// actual process replacement, using the app's real worker and shutdown paths.
-    func prepareToRelaunch(installHandler: @escaping () -> Void) {
+    func prepareToRelaunch(presentationIsBlocking: @escaping @MainActor () -> Bool = {
+        NSApplication.shared.modalWindow != nil || NSApplication.shared.windows.contains { $0.attachedSheet != nil }
+    }, installHandler: @escaping () -> Void) {
         guard relaunchTask == nil, !requiresRestart, !shutdownStarted else { return }
         let requestID = UUID()
         relaunchID = requestID
@@ -110,9 +113,29 @@ final class AppUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
             self.shutdownStarted = true
             await self.model?.shutdown()
             guard !Task.isCancelled, self.relaunchID == requestID else { return }
+            self.dismissAppPresentations()
+            // AppKit rejects Sparkle's quit Apple event while a sheet is attached.
+            // SwiftUI dismissal is asynchronous: wait for actual app-owned modal
+            // presentations to disappear instead of relying on an animation delay.
+            // Leave other windows/panels to the user and explain what is pending.
+            while presentationIsBlocking() {
+                self.status = "请关闭打开的对话框，随后会继续重启更新。"
+                self.dismissAppPresentations()
+                do { try await Task.sleep(nanoseconds: 100_000_000) }
+                catch { return }
+                guard !Task.isCancelled, self.relaunchID == requestID else { return }
+            }
+            guard !Task.isCancelled, self.relaunchID == requestID else { return }
+            self.status = "正在重启更新…"
             installHandler()
             if self.relaunchID == requestID { self.relaunchTask = nil }
         }
+    }
+
+    private func dismissAppPresentations() {
+        model?.showAbout = false
+        model?.showSettings = false
+        model?.notification = nil
     }
 }
 

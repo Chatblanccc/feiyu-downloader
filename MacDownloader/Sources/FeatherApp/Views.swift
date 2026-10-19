@@ -19,6 +19,12 @@ struct FeatherRootView: View {
                 Divider().opacity(0.45)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
+                        if updater.isWaitingToRelaunch {
+                            HStack(spacing: 10) {
+                                ProgressView().controlSize(.small)
+                                Text(updater.status).font(.system(size: 12)).foregroundStyle(.secondary)
+                            }
+                        }
                         if updater.requiresRestart {
                             VStack(alignment: .leading, spacing: 14) {
                                 Label("请重新打开飞羽下载", systemImage: "arrow.clockwise.circle")
