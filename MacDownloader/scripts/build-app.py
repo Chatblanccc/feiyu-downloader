@@ -71,6 +71,7 @@ def main():
     for name in ["yt-dlp", "ffmpeg", "ffprobe", "deno"]:
         shutil.copy2(VENDOR / name, tools / name)
         (tools / name).chmod(0o755)
+    shutil.copy2(PROJECT / "Resources" / "BrandIcon.png", resources / "BrandIcon.png")
     shutil.copytree(VENDOR / "licenses", resources / "Licenses")
     sparkle_license = PROJECT / ".build" / "artifacts" / "sparkle" / "Sparkle" / "LICENSE"
     if not sparkle_license.is_file():

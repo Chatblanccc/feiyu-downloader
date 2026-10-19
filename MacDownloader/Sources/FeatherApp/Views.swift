@@ -74,10 +74,7 @@ struct FeatherRootView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 11).fill(featherBlue.gradient)
-                    Image(systemName: "arrow.down.to.line.compact").font(.system(size: 24, weight: .semibold)).foregroundStyle(.white)
-                }.frame(width: 40, height: 40)
+                FeatherBrandIcon().frame(width: 40, height: 40)
                 VStack(alignment: .leading, spacing: 3) {
                     Text("飞羽下载").font(.system(size: 18, weight: .semibold)).foregroundStyle(featherInk)
                     Text("FEATHER").font(.system(size: 9, weight: .medium, design: .rounded)).tracking(2).foregroundStyle(.secondary)
@@ -697,12 +694,24 @@ struct FeatherSettingsView: View {
     }
 }
 
+private struct FeatherBrandIcon: View {
+    private var image: NSImage {
+        if let url = Bundle.main.url(forResource: "BrandIcon", withExtension: "png"),
+           let image = NSImage(contentsOf: url) { return image }
+        return NSApplication.shared.applicationIconImage
+    }
+    var body: some View {
+        Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+            .accessibilityLabel("飞羽下载标志")
+    }
+}
+
 struct FeatherAboutView: View {
     @EnvironmentObject private var updater: AppUpdater
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(spacing: 15) {
-            Image(systemName: "arrow.down.to.line.circle.fill").font(.system(size: 53)).foregroundStyle(featherBlue)
+            FeatherBrandIcon().frame(width: 64, height: 64)
             Text("飞羽下载").font(.system(size: 24, weight: .semibold))
             Text("Feather · \(AppTools.version) · Apple silicon · macOS 13+").font(.system(size: 11)).foregroundStyle(.secondary)
             Text("把喜欢的视频，留在手边。") .font(.system(size: 13)).foregroundStyle(.secondary)

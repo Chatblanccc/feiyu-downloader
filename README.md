@@ -6,8 +6,8 @@
 
 | 版本 | 技术 | 系统要求 | 说明 |
 | --- | --- | --- | --- |
-| [macOS 0.4.0](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载 macOS 13+，字幕 macOS 26+ | 使用 Apple 系统语音识别与翻译 |
-| [Windows 0.4.0](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
+| [macOS 0.4.1](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载 macOS 13+，字幕 macOS 26+ | 使用 Apple 系统语音识别与翻译 |
+| [Windows 0.4.1](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
 
 - 支持粘贴视频链接或完整分享文案，选择画质和保存位置。
 - 下载任务、进度、取消与重试；完成时核对实际输出文件。
