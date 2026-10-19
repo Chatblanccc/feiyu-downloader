@@ -18,3 +18,12 @@ WindowsDownloader/docs/功能验证记录.json
 *.log
 *.cookies
 cookies.txt
+
+# Release keys stay outside this repository
+__pycache__/
+*.pyc
+*.seed
+*.p8
+*.p12
+*.pfx
+*.pem

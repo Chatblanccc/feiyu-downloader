@@ -13,6 +13,7 @@ final class TranslationPreparationCoordinator: ObservableObject {
     private var preparationTask: Task<Void, Error>?
     private var deadlineTask: Task<Void, Never>?
     private let timeout: TimeInterval
+    var isPreparing: Bool { requestID != nil || preparationTask != nil || availabilityTask != nil }
 
     init(timeout: TimeInterval = 600) {
         self.timeout = timeout.isFinite ? min(600, max(0.01, timeout)) : 600

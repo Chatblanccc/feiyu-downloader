@@ -39,7 +39,22 @@ struct DownloadItem: Identifiable, Codable, Sendable {
 }
 
 enum AppTools {
-    static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.1" }
+    static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0" }
+    /// Local acceptance tests use an isolated history, output folder and cache.
+    /// Normal launches retain the existing application-support paths and defaults.
+    static var testDataDirectory: URL? {
+        guard let custom = ProcessInfo.processInfo.environment["FEATHER_TEST_DATA"], !custom.isEmpty else { return nil }
+        return URL(fileURLWithPath: custom, isDirectory: true).standardizedFileURL
+    }
+    static var preferences: UserDefaults? { testDataDirectory == nil ? .standard : nil }
+    static var supportDirectory: URL {
+        testDataDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("FeatherDownloader", isDirectory: true)
+    }
+    static var downloadsDirectory: URL {
+        testDataDirectory?.appendingPathComponent("Downloads", isDirectory: true) ??
+        FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!.appendingPathComponent("飞羽下载", isDirectory: true)
+    }
     static var directory: URL {
         if let custom = ProcessInfo.processInfo.environment["FEATHER_TOOLS_DIR"], !custom.isEmpty {
             return URL(fileURLWithPath: custom, isDirectory: true)
@@ -52,8 +67,9 @@ enum AppTools {
                   deno: directory.appendingPathComponent("deno"))
     }
     static func makeEngine() -> DownloadEngine {
-        let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("com.featherdownloader.app", isDirectory: true)
+        let cache = (testDataDirectory?.appendingPathComponent("Cache", isDirectory: true) ??
+            FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+                .appendingPathComponent("com.featherdownloader.app", isDirectory: true))
             .appendingPathComponent("deno", isDirectory: true)
         try? FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
         return DownloadEngine(tools: paths, environment: ["DENO_DIR": cache.path])
@@ -106,6 +122,14 @@ final class ProgressMailbox: @unchecked Sendable {
     @Published var showAbout = false
     @Published var selectedSection: SidebarSection = .all
     @Published var notification: String?
+    lazy var updater = AppUpdater(model: self)
+
+    /// Include task handles as cancellation can leave native workers cleaning up
+    /// after the visible state has changed. Queued downloads must also finish.
+    var hasActiveWorkForUpdate: Bool {
+        worker != nil || previewTask != nil || pendingPreview != nil || isResolving ||
+        activeCount > 0 || subtitleFeature.hasActiveWorkForUpdate
+    }
 
     enum SidebarSection: String, CaseIterable {
         case all = "全部任务", active = "下载中", completed = "已完成", subtitles = "翻译与字幕"
@@ -141,11 +165,8 @@ final class ProgressMailbox: @unchecked Sendable {
 
     init(engine: any DownloadServing = AppTools.makeEngine(), historyFile: URL? = nil) {
         self.engine = engine
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-        destination = UserDefaults.standard.url(forKey: "downloadDirectory") ?? downloads.appendingPathComponent("飞羽下载", isDirectory: true)
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("FeatherDownloader", isDirectory: true)
-        historyURL = historyFile ?? support.appendingPathComponent("history.json")
+        destination = AppTools.preferences?.url(forKey: "downloadDirectory") ?? AppTools.downloadsDirectory
+        historyURL = historyFile ?? AppTools.supportDirectory.appendingPathComponent("history.json")
         completionStore = DownloadCompletionStore(historyURL: historyURL)
         let receipts = completionStore
         var recoveredCompletion = false
@@ -519,7 +540,7 @@ final class ProgressMailbox: @unchecked Sendable {
         panel.directoryURL = destination
         if panel.runModal() == .OK, let chosen = panel.url {
             destination = chosen
-            UserDefaults.standard.set(chosen, forKey: "downloadDirectory")
+            AppTools.preferences?.set(chosen, forKey: "downloadDirectory")
         }
     }
 

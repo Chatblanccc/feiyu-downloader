@@ -1,0 +1,44 @@
+name: Update and macOS CI
+on:
+  pull_request:
+    paths:
+      - 'MacDownloader/**'
+      - 'updates/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/updates-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'MacDownloader/**'
+      - 'updates/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/updates-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: updates-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  release-metadata:
+    name: Release metadata checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: python3 -m unittest discover -s tests -v
+  macos:
+    name: macOS build and core regressions
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Build native app and pinned updater
+        run: swift build --package-path MacDownloader -c release --arch arm64
+      - name: Core resource regressions
+        run: |
+          mkdir -p work
+          swiftc -swift-version 5 -D FEATHER_STANDALONE MacDownloader/Sources/DownloadCore/*.swift MacDownloader/Tests/DownloadCoreTests/DownloadCoreTests.swift -o work/core-tests
+          work/core-tests

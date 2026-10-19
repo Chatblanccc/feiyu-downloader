@@ -1,6 +1,6 @@
 {
   "name": "feiyu-downloader",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "飞羽下载 · 视频下载、翻译与字幕",
   "main": "src/main.cjs",
   "author": "Feiyu",
@@ -12,12 +12,13 @@
     "dist:mac-test": "electron-builder --mac dir --arm64"
   },
   "dependencies": {
-    "@huggingface/transformers": "3.8.1"
+    "@huggingface/transformers": "3.8.1",
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "electron": "44.9.0",
     "electron-builder": "26.0.12",
-    "@electron/asar": "3.4.1",
     "resedit": "2.0.3"
   },
   "build": {
@@ -53,7 +54,9 @@
         "from": "docs",
         "to": "docs",
         "filter": [
-          "**/*"
+          "**/*",
+          "!功能验证记录.json",
+          "!**/.*"
         ]
       }
     ],
@@ -91,7 +94,14 @@
       "identity": null,
       "category": "public.app-category.utilities"
     },
-    "afterPack": "scripts/edit-resources.cjs"
+    "afterPack": "scripts/edit-resources.cjs",
+    "publish": {
+      "provider": "github",
+      "owner": "Chatblanccc",
+      "repo": "feiyu-downloader",
+      "private": false,
+      "releaseType": "draft"
+    }
   },
   "overrides": {
     "sharp": "0.35.5"

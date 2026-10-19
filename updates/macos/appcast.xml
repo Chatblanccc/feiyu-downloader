@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><!-- sparkle-sign-warning:
+IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
+--><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>飞羽下载 macOS 更新</title>
+    <link>https://github.com/Chatblanccc/feiyu-downloader/releases</link>
+    <description>稳定更新尚未发布。发布时由签名工具生成版本条目。</description>
+  </channel>
+</rss><!-- sparkle-signatures:
+edSignature: lExjeZBqNfwGoNNP++BhjiOYqiFXIttMVXdTOI70V4/TgasO/DIJeQFtjx0Yfw4RA1shotkDx7Lf/kXGWEF8Cg==
+length: 633
+-->

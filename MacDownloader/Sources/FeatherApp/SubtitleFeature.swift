@@ -10,6 +10,12 @@ final class SubtitleFeature {
         storage = model
         return model
     }
+    var hasActiveWorkForUpdate: Bool {
+        if #available(macOS 26.0, *), let model = storage as? SubtitleApplicationModel {
+            return model.hasActiveWorkForUpdate
+        }
+        return false
+    }
     func shutdown() async {
         if #available(macOS 26.0, *), let model = storage as? SubtitleApplicationModel { await model.shutdown() }
     }

@@ -6,8 +6,8 @@
 
 | 版本 | 技术 | 系统要求 | 说明 |
 | --- | --- | --- | --- |
-| [macOS 0.2.1](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载 macOS 13+，字幕 macOS 26+ | 使用 Apple 系统语音识别与翻译 |
-| [Windows 0.3.0](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
+| [macOS 0.4.0](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载 macOS 13+，字幕 macOS 26+ | 使用 Apple 系统语音识别与翻译 |
+| [Windows 0.4.0](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
 
 - 支持粘贴视频链接或完整分享文案，选择画质和保存位置。
 - 下载任务、进度、取消与重试；完成时核对实际输出文件。
@@ -16,6 +16,10 @@
 - 浏览器登录状态仅在用户主动选择后使用。
 
 各网站能否下载取决于内容权限、网站变化和网络环境，不保证所有链接可用。请仅下载自己拥有或已获得许可的内容，并遵守网站条款。
+
+## 检查更新
+
+0.4.0 新增用户主动检查 GitHub Releases 更新，确认下载后重启覆盖升级，保留原数据。Mac 使用 Sparkle 签名更新；Windows 使用 electron-updater / NSIS。发布流程和签名边界见 [更新说明](docs/UPDATES.md)。当前更新包处于发布候选阶段，正式 Release 上线后客户端才会获得更新。
 
 ## 从源码构建
 
@@ -48,7 +52,7 @@ npm run dist:win
 
 Windows 单元测试：在 `WindowsDownloader` 内运行 `npm test`。macOS 核心测试见 [MacDownloader/README.md](MacDownloader/README.md)。
 
-Windows 版目前在 Apple Silicon Mac 的跨平台实现上完成开发验证，仍需 Windows 实机验收；macOS 安装包使用本地 ad-hoc 签名，尚未进行 Developer ID 签名与公证。本次开源发布源码，不代表已经提供经签名的正式安装版本。
+Windows 0.3.2 已有 Windows 实机下载验证；0.4.0 更新功能的 Windows 真实覆盖升级仍需验收。macOS 安装包使用本地 ad-hoc 签名，尚未进行 Developer ID 签名与公证。测试包和源码不代表已经提供经平台签名的正式安装版本。
 
 ## 许可
 

@@ -39,13 +39,18 @@ struct FeatherApplication: App {
     @StateObject private var model = ApplicationModel()
     var body: some Scene {
         WindowGroup("飞羽下载") {
-            FeatherRootView().environmentObject(model).preferredColorScheme(.light)
-                .onAppear { delegate.model = model; NSApplication.shared.activate(ignoringOtherApps: true) }
+            FeatherRootView().environmentObject(model).environmentObject(model.updater).preferredColorScheme(.light)
+                .onAppear {
+                    delegate.model = model
+                    model.updater.start()
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
         }
         .defaultSize(width: 1060, height: 770)
         .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .appInfo) { Button("关于飞羽下载") { model.showAbout = true } }
+            CommandGroup(after: .appInfo) { CheckForUpdatesButton(updater: model.updater) }
             CommandGroup(replacing: .appSettings) { Button("下载设置…") { model.showSettings = true }.keyboardShortcut(",", modifiers: .command) }
             CommandGroup(after: .pasteboard) {
                 Button("粘贴并解析视频链接") { model.paste(); model.resolvePreview() }.keyboardShortcut("v", modifiers: [.command, .shift])
@@ -250,6 +255,56 @@ private actor UILifecycleEngine: DownloadServing {
             checks["closedMailboxDropsFurtherEvents"] = mailbox.take() == nil
             checks["extremeDurationRejected"] = ApplicationModel.duration(.greatestFiniteMagnitude) == "--:--"
                 && ApplicationModel.duration(.nan) == "--:--" && ApplicationModel.duration(178) == "2:58"
+
+            let updatePreviewModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-preview.json"))
+            let previewUpdater = AppUpdater(model: updatePreviewModel)
+            var previewRelaunched = false
+            updatePreviewModel.shareText = "https://example.com/update-preview"
+            updatePreviewModel.resolvePreview()
+            updatePreviewModel.cancelPreview()
+            previewUpdater.prepareToRelaunch { previewRelaunched = true }
+            try await Task.sleep(nanoseconds: 20_000_000)
+            checks["updateWaitsForCancelledPreviewCleanup"] = updatePreviewModel.hasActiveWorkForUpdate && !previewRelaunched
+            try await Task.sleep(nanoseconds: 350_000_000)
+            checks["updateContinuesAfterPreviewCleanup"] = previewRelaunched && !updatePreviewModel.hasActiveWorkForUpdate
+
+            let updateDownloadModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-download.json"))
+            updateDownloadModel.destination = directory
+            let downloadUpdater = AppUpdater(model: updateDownloadModel)
+            var downloadRelaunched = false
+            updateDownloadModel.shareText = "https://example.com/update-1 https://example.com/update-2"
+            updateDownloadModel.enqueueInput()
+            downloadUpdater.prepareToRelaunch { downloadRelaunched = true }
+            try await Task.sleep(nanoseconds: 100_000_000)
+            checks["updateWaitsForQueuedDownloads"] = updateDownloadModel.hasActiveWorkForUpdate && !downloadRelaunched
+            try await Task.sleep(nanoseconds: 850_000_000)
+            checks["updatePreservesCompletedDownloadsBeforeRelaunch"] = downloadRelaunched && updateDownloadModel.items.count == 2
+                && updateDownloadModel.items.allSatisfy { $0.state == .completed && $0.fileURL.map { FileManager.default.fileExists(atPath: $0.path) } == true }
+
+            let abortedModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-aborted.json"))
+            abortedModel.destination = directory
+            let abortedUpdater = AppUpdater(model: abortedModel)
+            var abortedRelaunched = false
+            abortedModel.shareText = "https://example.com/update-aborted"
+            abortedModel.enqueueInput()
+            abortedUpdater.prepareToRelaunch { abortedRelaunched = true }
+            try await Task.sleep(nanoseconds: 20_000_000)
+            abortedUpdater.handleUpdateAbort(NSError(domain: "OfflineUpdateFixture", code: 1))
+            try await Task.sleep(nanoseconds: 600_000_000)
+            abortedModel.shareText = "https://example.com/update-after-abort"
+            abortedModel.resolvePreview()
+            checks["abortedUpdateNeverInstallsAndKeepsTaskAdmissionOpen"] = !abortedRelaunched && !abortedUpdater.isWaitingToRelaunch
+                && !abortedUpdater.requiresRestart && abortedModel.isResolving
+            await abortedModel.shutdown()
+
+            let recoveryModel = ApplicationModel(engine: UILifecycleEngine(), historyFile: directory.appendingPathComponent("update-recovery.json"))
+            let recoveryUpdater = AppUpdater(model: recoveryModel)
+            var recoveryHandlerCalled = false
+            recoveryUpdater.prepareToRelaunch { recoveryHandlerCalled = true }
+            try await Task.sleep(nanoseconds: 100_000_000)
+            recoveryUpdater.handleUpdateAbort(NSError(domain: "OfflineUpdateFixture", code: 2))
+            checks["updateAbortAfterShutdownOffersRestartRecovery"] = recoveryHandlerCalled && recoveryUpdater.requiresRestart
+                && !recoveryUpdater.isWaitingToRelaunch && recoveryUpdater.status.contains("退出后重新打开")
 
             let migrationHistory = directory.appendingPathComponent("legacy-x-errors.json")
             let oldFailure = "视频不可用，可能已删除、设为私密或限制了访问地区。"

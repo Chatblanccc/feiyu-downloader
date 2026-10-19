@@ -7,11 +7,12 @@ const { fileURLToPath, pathToFileURL } = require('node:url');
 const { FeatherController, message } = require('./controller.cjs');
 const { runProcess } = require('./core');
 const { createSiteSession } = require('./site-session.cjs');
+const { UpdateService, applicationBusy } = require('./update-service.cjs');
 if (process.env.FEATHER_TEST_DATA) app.setPath('userData', path.resolve(process.env.FEATHER_TEST_DATA));
 app.setName('飞羽下载 Windows');
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
-let window, controller, siteSession, closing = false, shutdownDone = false, emitTimer = null, heartbeatTimer, lastHeartbeat = Date.now(), memoryOverAt = 0;
+let window, controller, siteSession, updates, closing = false, shutdownDone = false, emitTimer = null, heartbeatTimer, lastHeartbeat = Date.now(), memoryOverAt = 0;
 const selectedPaths = new Set();
 const root = path.resolve(__dirname, '..');
 function tools() {
@@ -23,18 +24,24 @@ function tools() {
   return { ytDlp: path.join(dir,'yt-dlp.exe'), ffmpeg: path.join(dir,'ffmpeg.exe'), ffprobe: path.join(dir,'ffprobe.exe'), deno: path.join(dir,'deno.exe'), whisper: path.join(dir,'whisper','whisper-cli.exe'), fonts: path.join(dir,'fonts'), node: process.execPath };
 }
 async function shutdown(reason) {
-  if (closing) return; closing = true; clearInterval(heartbeatTimer); clearTimeout(emitTimer);
+  if (closing) return; closing = true; updates?.cancelForShutdown(); clearInterval(heartbeatTimer); clearTimeout(emitTimer);
   const deadline = setTimeout(() => app.exit(1), 7000); deadline.unref();
   try { siteSession?.close(); await controller?.close(); } finally { shutdownDone = true; clearTimeout(deadline); app.quit(); }
 }
 function sendState() {
   if (emitTimer || closing) return;
-  emitTimer = setTimeout(() => { emitTimer = null; if (window && !window.isDestroyed()) window.webContents.send('feather:state', controller.snapshot()); }, 150);
+  emitTimer = setTimeout(() => { emitTimer = null; if (window && !window.isDestroyed()) window.webContents.send('feather:state', snapshot()); }, 150);
+}
+function snapshot() { return { ...controller.snapshot(), update: updates?.snapshot() }; }
+async function prepareUpdateInstall() {
+  closing = true; clearInterval(heartbeatTimer); clearTimeout(emitTimer); emitTimer = null;
+  try { siteSession?.close(); await controller.close(); shutdownDone = true; }
+  catch (error) { closing = false; throw error; }
 }
 function validSender(event) {
   if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || !event.senderFrame.url.startsWith(pathToFileURL(path.join(root, 'renderer/')).href)) throw new Error('请求来源无效。');
 }
-function call(name, fn) { ipcMain.handle(`feather:${name}`, async (event, ...args) => { validSender(event); try { return await fn(...args); } catch (e) { throw new Error(message(e)); } }); }
+function call(name, fn) { ipcMain.handle(`feather:${name}`, async (event, ...args) => { validSender(event); try { return await (name === 'getState' || ['checkUpdate','downloadUpdate','cancelUpdate','installUpdate'].includes(name) ? fn(...args) : updates.runActivity(() => fn(...args))); } catch (e) { throw new Error(message(e)); } }); }
 function fileAllowed(value) {
   if (typeof value !== 'string' || !path.isAbsolute(value) || value.includes('\0')) throw new Error('文件路径无效。');
   const absolute = path.resolve(value);
@@ -85,18 +92,23 @@ async function createWindow() {
 }
 app.on('second-instance', () => { if (window) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
 app.on('before-quit', event => { if (!shutdownDone && controller) { event.preventDefault(); void shutdown('quit'); } });
-app.on('window-all-closed', () => { if (!closing) void shutdown('all windows closed'); });
+app.on('window-all-closed', () => { if (shutdownDone) app.quit(); else if (!closing) void shutdown('all windows closed'); });
 app.whenReady().then(async () => {
   if (!lock) return;
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  siteSession = createSiteSession({ BrowserWindow, session, parent: () => window });
+  siteSession = createSiteSession({ BrowserWindow, session, parent: () => window, onBusyChange: sendState });
   controller = new FeatherController({ dataDirectory: app.getPath('userData'), downloadDirectory: path.join(app.getPath('downloads'),'飞羽下载'), tools: tools(), version: app.getVersion(), sessionAuthentication: sourceURL => siteSession.prepare(sourceURL), sessionMetadata: (sourceURL, options) => siteSession.metadata(sourceURL, options), anonymousMetadata: (sourceURL, options) => siteSession.anonymousMetadata(sourceURL, options) });
   await controller.init();
   const t = tools(); const required = [t.ytDlp,t.ffmpeg,t.ffprobe,t.deno]; controller.toolsReady = (await Promise.all(required.map(p => fs.stat(p).then(s => s.isFile()).catch(() => false)))).every(Boolean);
+  const updateSupported = process.platform === 'win32' && app.isPackaged;
+  updates = new UpdateService({ updater: updateSupported ? require('electron-updater').autoUpdater : null, version: app.getVersion(), supported: updateSupported, isBusy: () => applicationBusy(controller, siteSession), prepareInstall: prepareUpdateInstall });
+  updates.on('change', () => { if (window && !window.isDestroyed()) window.webContents.send('feather:update', updates.snapshot()); });
   controller.on('change', sendState);
   ipcMain.on('feather:heartbeat-reply', event => { if (window && event.sender === window.webContents) lastHeartbeat = Date.now(); });
-  call('getState', () => controller.snapshot());
+  call('getState', snapshot);
+  call('checkUpdate', () => updates.check()); call('downloadUpdate', () => updates.download());
+  call('cancelUpdate', () => updates.cancel()); call('installUpdate', () => updates.install());
   call('openWebsite', async text => { if (controller.settings.browser !== 'session') throw new Error('请先选择「应用内网站会话」。'); return siteSession.open(text); });
   call('preview', options => controller.preview(options)); call('addDownloads', options => controller.addDownloads(options));
   call('retryDownload', id => controller.retryDownload(id)); call('cancelDownload', id => controller.downloads.cancel(id)); call('removeDownload', id => controller.downloads.remove(id));

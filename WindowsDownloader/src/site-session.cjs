@@ -43,7 +43,7 @@ function cookieFileContent(cookies, sourceURL, now = Date.now() / 1000) {
   return content;
 }
 
-function createSiteSession({ BrowserWindow, session, parent }) {
+function createSiteSession({ BrowserWindow, session, parent, onBusyChange = () => {} }) {
   const websiteSession = session.fromPartition('persist:feiyu-websites');
   websiteSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   websiteSession.setPermissionCheckHandler(() => false);
@@ -61,6 +61,7 @@ function createSiteSession({ BrowserWindow, session, parent }) {
     if (!websiteWindow || websiteWindow.isDestroyed()) {
       websiteWindow = new BrowserWindow({ width: 1120, height: 800, title: '飞羽 · 网站会话（确认视频可以播放后，关闭此窗口返回下载）', parent: parent(),
         webPreferences: { session: websiteSession, contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, devTools: false } });
+      websiteWindow.on('closed', onBusyChange); onBusyChange();
       websiteWindow.removeMenu();
       websiteWindow.webContents.on('will-navigate', (event, value) => { if (!navigationAllowed(value)) event.preventDefault(); });
       websiteWindow.webContents.on('will-redirect', (event, value) => { if (!navigationAllowed(value)) event.preventDefault(); });
@@ -100,7 +101,7 @@ function createSiteSession({ BrowserWindow, session, parent }) {
     let browser;
     try { browser = new BrowserWindow({ show: false, webPreferences: { session: pageSession, sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true, devTools: false } }); }
     catch (error) { if (anonymous) await Promise.allSettled([pageSession.clearStorageData(), pageSession.clearCache()]); throw error; }
-    extractionWindows.add(browser); browser.webContents.setAudioMuted(true);
+    extractionWindows.add(browser); onBusyChange(); browser.webContents.setAudioMuted(true);
     browser.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     let targetID = douyinVideoID(url.href);
     for (const eventName of ['will-navigate', 'will-redirect']) browser.webContents.on(eventName, (event, value) => {
@@ -135,11 +136,12 @@ function createSiteSession({ BrowserWindow, session, parent }) {
     };
     try { return await Promise.race([read(), guard]); }
     finally {
-      clearTimeout(timer); signal?.removeEventListener('abort', abort); extractionWindows.delete(browser); if (!browser.isDestroyed()) browser.destroy();
+      clearTimeout(timer); signal?.removeEventListener('abort', abort); extractionWindows.delete(browser); onBusyChange(); if (!browser.isDestroyed()) browser.destroy();
       if (anonymous) await Promise.allSettled([pageSession.clearStorageData(), pageSession.clearCache()]);
     }
   }
   function close() { if (websiteWindow && !websiteWindow.isDestroyed()) websiteWindow.destroy(); for (const browser of extractionWindows) if (!browser.isDestroyed()) browser.destroy(); }
-  return { open, prepare, metadata, anonymousMetadata: (sourceURL, options) => metadata(sourceURL, { ...options, anonymous: true }), close };
+  const isBusy = () => !!((websiteWindow && !websiteWindow.isDestroyed()) || extractionWindows.size);
+  return { open, prepare, metadata, isBusy, anonymousMetadata: (sourceURL, options) => metadata(sourceURL, { ...options, anonymous: true }), close };
 }
 module.exports = { createSiteSession, cookieFileContent, siteURL, browserUserAgent };
