@@ -6,11 +6,12 @@ const os = require('node:os');
 const { fileURLToPath, pathToFileURL } = require('node:url');
 const { FeatherController, message } = require('./controller.cjs');
 const { runProcess } = require('./core');
+const { createSiteSession } = require('./site-session.cjs');
 if (process.env.FEATHER_TEST_DATA) app.setPath('userData', path.resolve(process.env.FEATHER_TEST_DATA));
 app.setName('飞羽下载 Windows');
 const lock = app.requestSingleInstanceLock();
 if (!lock) app.quit();
-let window, controller, closing = false, shutdownDone = false, emitTimer = null, heartbeatTimer, lastHeartbeat = Date.now(), memoryOverAt = 0;
+let window, controller, siteSession, closing = false, shutdownDone = false, emitTimer = null, heartbeatTimer, lastHeartbeat = Date.now(), memoryOverAt = 0;
 const selectedPaths = new Set();
 const root = path.resolve(__dirname, '..');
 function tools() {
@@ -24,7 +25,7 @@ function tools() {
 async function shutdown(reason) {
   if (closing) return; closing = true; clearInterval(heartbeatTimer); clearTimeout(emitTimer);
   const deadline = setTimeout(() => app.exit(1), 7000); deadline.unref();
-  try { await controller?.close(); } finally { shutdownDone = true; clearTimeout(deadline); app.quit(); }
+  try { siteSession?.close(); await controller?.close(); } finally { shutdownDone = true; clearTimeout(deadline); app.quit(); }
 }
 function sendState() {
   if (emitTimer || closing) return;
@@ -89,12 +90,14 @@ app.whenReady().then(async () => {
   if (!lock) return;
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
-  controller = new FeatherController({ dataDirectory: app.getPath('userData'), downloadDirectory: path.join(app.getPath('downloads'),'飞羽下载'), tools: tools(), version: app.getVersion() });
+  siteSession = createSiteSession({ BrowserWindow, session, parent: () => window });
+  controller = new FeatherController({ dataDirectory: app.getPath('userData'), downloadDirectory: path.join(app.getPath('downloads'),'飞羽下载'), tools: tools(), version: app.getVersion(), sessionAuthentication: sourceURL => siteSession.prepare(sourceURL), sessionMetadata: (sourceURL, options) => siteSession.metadata(sourceURL, options), anonymousMetadata: (sourceURL, options) => siteSession.anonymousMetadata(sourceURL, options) });
   await controller.init();
   const t = tools(); const required = [t.ytDlp,t.ffmpeg,t.ffprobe,t.deno]; controller.toolsReady = (await Promise.all(required.map(p => fs.stat(p).then(s => s.isFile()).catch(() => false)))).every(Boolean);
   controller.on('change', sendState);
   ipcMain.on('feather:heartbeat-reply', event => { if (window && event.sender === window.webContents) lastHeartbeat = Date.now(); });
   call('getState', () => controller.snapshot());
+  call('openWebsite', async text => { if (controller.settings.browser !== 'session') throw new Error('请先选择「应用内网站会话」。'); return siteSession.open(text); });
   call('preview', options => controller.preview(options)); call('addDownloads', options => controller.addDownloads(options));
   call('retryDownload', id => controller.retryDownload(id)); call('cancelDownload', id => controller.downloads.cancel(id)); call('removeDownload', id => controller.downloads.remove(id));
   call('saveSettings', value => controller.saveSettings(value));

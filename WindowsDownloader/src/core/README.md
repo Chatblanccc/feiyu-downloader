@@ -12,7 +12,7 @@ const manager = new DownloadManager({
 manager.on('change', snapshot => sendToRenderer(snapshot));
 manager.on('warning', text => showWarning(text));
 await manager.init();
-await manager.setOptions({ authentication: { type: 'browser', browser: 'chrome' } });
+await manager.setOptions({ authentication: { type: 'none' } }); // Default; no browser credentials.
 const metadata = await manager.preview(shareText); // Optional. add resolves afresh.
 const id = await manager.add(shareText, { quality: 'best' });
 await manager.cancel(id);
@@ -26,12 +26,16 @@ await manager.close(); // Abort and await helper cleanup before app exit.
 - `{tasks, options, activeCount, previewing}`.
 - Options: `{downloadDirectory, quality, authentication, concurrency}`.
 - Quality: `best`, `p1080`, `p720`, `audio` (M4A).
-- Authentication: `{type:'none'}`, `{type:'browser',browser:'chrome'|'edge'|'firefox'|'brave'|'opera'|'vivaldi'}`, `{type:'file',path:absolutePath}`. None is the default. Cookies are never read or retried automatically. A selected Netscape cookie file is copied to a private temporary directory because yt-dlp can modify its cookie jar; the copy is removed after use.
+- Authentication: `{type:'none'}`, `{type:'browser',browser:'chrome'|'edge'|'firefox'|'brave'|'opera'|'vivaldi'}`, `{type:'file',path:absolutePath}`, or `{type:'session'}` with an injected `sessionAuthentication(sourceURL)` provider. None is the default. Cookies are never read from another browser automatically. On Windows only, a selected browser cookie-loading failure retries once with no cookies and reports a warning. A successful anonymous preview carries this decision into the download. Site/session, network, permission and other extraction failures are not retried by this rule. A selected Netscape cookie file is copied to a private temporary directory because yt-dlp can modify its cookie jar; the copy is removed after use.
 - Task: `{id, sourceURL, title, metadata, quality, directory, authentication, status, progress, error, createdAt, updatedAt, filePath, fileSize, completedAt?}`.
 - Status: `queued`, `resolving`, `downloading`, `processing`, `completed`, `failed`, `cancelled`, `interrupted`.
 - Progress: `{fraction, downloadedBytes, totalBytes, speedBytesPerSecond, etaSeconds, status, item, postprocessor}`; unknown numeric fields are null. Fraction is 0–1. A processing task is not completed even when download fraction reaches 1.
 - Error: `{code, message}` or null. Message is already sanitized Chinese text. Do not display raw extractor diagnostics.
 - Metadata in history/snapshot excludes CDN stream URLs, thumbnail URLs and raw extractor data. Optional preview returns metadata with formats and thumbnail URL for the current view, without persisting it.
+
+Windows 0.3.2 accepts an injected `anonymousMetadata(sourceURL, {signal})` provider through `DownloadManager` / `DownloadEngine`. For supported Douyin URLs, when yt-dlp exits unsuccessfully after an anonymous extraction attempt, the engine tries this provider automatically. This also applies after the single anonymous retry caused by a selected browser cookie-loading failure. Explicit site sessions, cookie-file authentication and site failures while using successfully loaded browser cookies do not trigger this fallback. Cancellation, resource limits, tool-launch failures and other errors that reject the runner do not trigger it either.
+
+The Electron provider creates a fresh, nonpersistent, in-memory session for each anonymous request. It reads neither Chrome/Edge credentials nor the saved application website session. Extraction is bounded to 35 seconds, accepts cancellation, and destroys its hidden window on success or failure; it then clears session storage and cache. Returned `downloadInfo` supplies the current video's formats to the downloader without another site extraction. This fallback is limited to supported Douyin links and does not guarantee access to login-required, restricted or challenged content. The optional `sessionMetadata(sourceURL, {signal})` provider remains available only when `{type:'session'}` is explicitly selected.
 
 `runProcess({executable,args,cwd?,env?,signal?,captureStdout?,onLine?,limits?,onResourceWarning?})` is shared with subtitle workers. `env` merges with the current process environment. `onLine(line,channel)` gets stdout/stderr independently. `captureStdout` defaults true. Return fields are `{exitCode, signal, stdout, stderr, peakMemoryBytes, durationMs}`. Nonzero exit is returned for the caller to classify; launch/cancel/limit failures reject with `DownloadError`. For Electron's executable as a Node worker set `env: {ELECTRON_RUN_AS_NODE:'1'}`. No shell is used.
 
