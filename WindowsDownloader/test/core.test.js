@@ -68,12 +68,12 @@ test('file cookies are copied privately, not modified or kept after invocation',
   const engine=new DownloadEngine({tools:{ytDlp:process.execPath,ffmpeg:process.execPath},runner:async options=>{copied=options.args[options.args.indexOf('--cookies')+1];assert.notEqual(copied,cookies);assert.equal(await fs.readFile(copied,'utf8'),content);await fs.appendFile(copied,'changed');return{exitCode:1,stderr:'ERROR: failed'};}});
   await assert.rejects(engine.preview('https://example.com/video',{authentication:{type:'file',path:cookies}}));assert.equal(await fs.readFile(cookies,'utf8'),content);await assert.rejects(fs.access(copied));
 });
-function fakeEngine(directory,{hang=false,lateCancel=false}={}){
+function fakeEngine(directory,{hang=false,afterDelivery}={}){
   return {preview:async(sourceURL,{signal})=>{if(signal.aborted)throw new DownloadError('cancelled');return {id:'example',title:'A video',sourceURL,availableHeights:[1080],isLive:false};},download:async(metadata,{signal,onProgress})=>{
     onProgress({fraction:0.5,downloadedBytes:5,totalBytes:10,status:'downloading'});
     if(signal.aborted)throw new DownloadError('cancelled');
     if(hang)return new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new DownloadError('cancelled')),{once:true}));
-    await fs.mkdir(directory,{recursive:true});const filePath=path.join(directory,'example.mp4');await fs.writeFile(filePath,'video-data');if(lateCancel)await new Promise(r=>setTimeout(r,30));return{filePath,fileSize:10};
+    await fs.mkdir(directory,{recursive:true});const filePath=path.join(directory,'example.mp4');await fs.writeFile(filePath,'video-data');await afterDelivery?.();return{filePath,fileSize:10};
   }};
 }
 test('manager completion persists receipt before restart and history-only removal keeps media',async t=>{
@@ -95,7 +95,8 @@ test('cancel active download settles and leaves no active slots',async t=>{
   const root=await temporary(t),directory=path.join(root,'videos');const manager=new DownloadManager({downloadDirectory:directory,dataDirectory:path.join(root,'data'),engine:fakeEngine(directory,{hang:true})});await manager.init();const id=await manager.add('https://example.com/video');await waitUntil(()=>manager.snapshot().tasks[0].status==='downloading');await manager.cancel(id);await waitUntil(()=>manager.snapshot().tasks[0].status==='cancelled'&&manager.snapshot().activeCount===0);await manager.close();
 });
 test('late cancellation after delivered file does not erase completed task',async t=>{
-  const root=await temporary(t),directory=path.join(root,'videos');const manager=new DownloadManager({downloadDirectory:directory,dataDirectory:path.join(root,'data'),engine:fakeEngine(directory,{lateCancel:true})});await manager.init();const id=await manager.add('https://example.com/video');await waitUntil(()=>manager.snapshot().tasks[0].status==='downloading');await manager.cancel(id);await waitUntil(()=>manager.snapshot().tasks[0].status==='completed');await manager.close();
+  let delivered,release;const delivery=new Promise(resolve=>{delivered=resolve;}),completion=new Promise(resolve=>{release=resolve;});
+  const root=await temporary(t),directory=path.join(root,'videos');const manager=new DownloadManager({downloadDirectory:directory,dataDirectory:path.join(root,'data'),engine:fakeEngine(directory,{afterDelivery:async()=>{delivered();await completion;}})});await manager.init();const id=await manager.add('https://example.com/video');await delivery;try{await manager.cancel(id);}finally{release();}await waitUntil(()=>manager.snapshot().tasks[0].status==='completed');await manager.close();
 });
 test('preview replacement cancels and waits for prior cleanup before starting another process',async t=>{
   const root=await temporary(t);let active=0,peak=0;
@@ -107,8 +108,11 @@ test('repeated resource monitor failures stop task instead of running unguarded'
   let warnings=0;await assert.rejects(nodeRun('setInterval(()=>{},1000)',{resourceSample:async()=>{throw new Error('monitor blocked');},onResourceWarning:()=>warnings++,limits:{...shortLimits,resourceSampleIntervalMs:20}}),{code:'resourceMonitoringUnavailable'});assert.equal(warnings,1);
 });
 test('post-root-exit inherited output pipes cannot hold task open indefinitely',async()=>{
-  const source='require("node:child_process").spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:["ignore",process.stdout,process.stderr]});process.exit(0);';
-  const start=Date.now();await assert.rejects(nodeRun(source),{code:'helperDidNotExit'});assert.ok(Date.now()-start<1000);
+  // Windows Node pipes are not inherited like POSIX descriptors. Model an exited
+  // leader with unclosed pipes directly so both hosts exercise the same guard.
+  const {EventEmitter}=require('node:events'),{PassThrough}=require('node:stream');
+  const spawn=()=>{const child=new EventEmitter();child.stdout=new PassThrough();child.stderr=new PassThrough();queueMicrotask(()=>child.emit('exit',0,null));return child;};
+  const start=Date.now();await assert.rejects(nodeRun('',{spawn}),{code:'helperDidNotExit'});assert.ok(Date.now()-start<1500);
 });
 test('manager never exceeds two queued downloads and cancellation frees a slot',async t=>{
   const root=await temporary(t);let active=0,peak=0;

@@ -14,6 +14,8 @@ const MESSAGES = Object.freeze({
   invalidDirectory:'保存目录不可写，请重新选择目录。',
   invalidAuthentication:'登录状态设置无效，请重新选择浏览器或 Cookie 文件。',
   invalidCookieFile:'所选 Cookie 文件无法读取。请选择 Netscape 格式的文本文件。',
+  missingSiteSession:'请先点击「打开视频网站」，在应用内打开并确认视频可以播放，再返回重试。',
+  anonymousExtractionUnavailable:'暂时未能读取这个公开视频。请稍后重试；如果网站要求登录或验证，再主动选择「应用内网站会话」。',
   missingTool:'应用内的下载组件缺失或无法运行，请重新安装应用。',
   timedOut:'操作等待过久，已停止。请检查网络后重试。',
   stalled:'下载长时间没有实际进展，已自动停止并释放资源。请检查网络后手动重试。',
@@ -41,14 +43,19 @@ function readableFailure(detail) {
   if (any('not available in your country','not made available in your country','not available in your region','not available from your location','blocked in your country','geo-restricted','geoblocked')) return '平台明确限制了当前地区的访问，暂时无法下载这个视频。';
   if (any('private video','video is private','tweet is private','protected tweet','protected account','only available to subscribers','members-only','only available for registered users')) return '平台明确限制了这个内容的访问权限。请使用本身有权查看它的账号登录状态后重试。';
   if (any('video has been deleted','video has been removed','tweet has been deleted','tweet was deleted','deleted by the uploader','removed by the uploader','this content was removed')) return '平台提示这个内容已被删除或移除，无法继续下载。';
+  if (isBrowserCookieFailure(detail)) return 'Windows 无法读取所选浏览器的登录状态。请选择「应用内网站会话」并打开视频网站，或使用自行导出的 Cookie 文件。';
   if (any('permission denied','no space left','read-only')) return '文件无法写入，请检查保存目录权限和磁盘剩余空间。';
-  if (any('could not copy chrome cookie database','failed to decrypt','dpapi','app-bound')) return '浏览器登录状态暂时无法读取。请关闭所选浏览器后重试；若 Windows 仍阻止读取，可选择 Netscape 格式的 Cookie 文件。';
+  if (any('fresh cookies')) return '网站需要有效会话。请选择「应用内网站会话」，点击「打开视频网站」并确认视频可以播放，再返回重试；也可使用新导出的 Cookie 文件。';
   if (any('cookies','sign in','login','log in','not authorized','unauthorized','authentication required','age-restricted','confirm your age')) return '平台需要有效登录状态或内容访问资格。请选择已登录且有权访问的浏览器，或选择 Cookie 文件后重试。';
   if (any('429','too many requests')) return '平台暂时限制了请求频率，请稍后手动重试。';
   if (any('403','captcha','verify','blocked')) return '平台拒绝了这次请求，可能需要登录、验证或稍后重试。';
   if (any('timed out','connection','network','name or service','could not resolve','unable to resolve','failed to resolve','nodename nor servname')) return '网络连接未成功，请检查网络或代理设置后重试。';
   if (any('unavailable','not available','no video formats found')) return '平台当前没有返回可下载的视频。请先在浏览器确认内容可播放，并检查是否需要登录或具备访问权限。';
   return MESSAGES.generic;
+}
+function isBrowserCookieFailure(detail) {
+  const errors=String(detail||'').split(/[\r\n]+/).filter(line=>/ERROR:/i.test(line)).join(' ').replace(/https?:\/\/\S+/gi,'');
+  return /could not (?:copy|find).*cookie.*database|failed to decrypt|\bdpapi\b|app-bound|failed to load cookies from browser/i.test(errors);
 }
 function publicError(error) {
   return {code: error instanceof DownloadError ? error.code : 'generic', message: error instanceof DownloadError ? error.message : MESSAGES.generic};
@@ -72,12 +79,17 @@ function quality(value='best') { if (!Object.hasOwn(QUALITY_FORMATS,value)) thro
 function authentication(value={type:'none'}) {
   if (!value || typeof value !== 'object') throw new DownloadError('invalidAuthentication');
   if (value.type==='none') return {type:'none'};
+  if (value.type==='session') return {type:'session'};
   if (value.type==='browser' && ['chrome','edge','firefox','brave','opera','vivaldi'].includes(value.browser)) return {type:'browser',browser:value.browser};
   if (value.type==='file' && typeof value.path==='string' && path.isAbsolute(value.path) && !value.path.includes('\0')) return {type:'file',path:path.resolve(value.path)};
   throw new DownloadError('invalidAuthentication');
 }
-async function prepareAuthentication(value) {
+async function prepareAuthentication(value,{sourceURL,sessionAuthentication}={}) {
   const auth=authentication(value);
+  if (auth.type==='session') {
+    if(typeof sessionAuthentication!=='function')throw new DownloadError('missingSiteSession');
+    return sessionAuthentication(sourceURL);
+  }
   if (auth.type==='none') return {args:['--no-cookies','--no-cookies-from-browser'],cleanup:async()=>{}};
   if (auth.type==='browser') return {args:['--no-cookies','--cookies-from-browser',auth.browser],cleanup:async()=>{}};
   let temp;
@@ -114,4 +126,4 @@ function parseProgress(line) {
   const downloadedBytes=finite(raw.downloaded_bytes), totalBytes=finite(raw.total_bytes) || finite(raw.total_bytes_estimate);
   return {fraction:downloadedBytes!==null&&totalBytes>0?Math.max(0,Math.min(1,downloadedBytes/totalBytes)):null,downloadedBytes,totalBytes,speedBytesPerSecond:finite(raw.speed),etaSeconds:finite(raw.eta),status:typeof raw.status==='string'?raw.status.slice(0,64):'processing',item:typeof raw.item==='string'?raw.item.slice(0,256):'',postprocessor:typeof raw.postprocessor==='string'?raw.postprocessor.slice(0,256):''};
 }
-module.exports={PROGRESS_PREFIX,FINAL_PREFIX,QUALITY_FORMATS,MESSAGES,DownloadError,publicError,readableFailure,parseShareLinks,quality,authentication,prepareAuthentication,decodeMetadata,parseProgress};
+module.exports={PROGRESS_PREFIX,FINAL_PREFIX,QUALITY_FORMATS,MESSAGES,DownloadError,publicError,readableFailure,isBrowserCookieFailure,parseShareLinks,quality,authentication,prepareAuthentication,decodeMetadata,parseProgress};

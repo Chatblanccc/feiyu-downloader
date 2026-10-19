@@ -1,6 +1,6 @@
 {
   "name": "feiyu-downloader",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "飞羽下载 · 视频下载、翻译与字幕",
   "main": "src/main.cjs",
   "author": "Feiyu",

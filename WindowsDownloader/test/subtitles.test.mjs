@@ -116,7 +116,7 @@ async function engineFixture(t, options = {}) {
     options.afterChild?.(value);
     return { exitCode: 0, stdout: '', peakMemoryBytes: 1000 };
   };
-  const engine = createSubtitleEngine({ tools: { ffmpeg: 'ffmpeg', ffprobe: 'probe', whisper: 'whisper', node: 'node' }, modelDirectory: path.join(directory, 'models'), modelManager: { requireReady: async value => modelRequests.push(value), whisperPath }, runProcess });
+  const engine = createSubtitleEngine({ tools: { ffmpeg: 'ffmpeg', ffprobe: 'probe', whisper: 'whisper', node: 'node' }, modelDirectory: path.join(directory, 'models'), modelManager: { requireReady: async value => modelRequests.push(value), whisperPath }, runProcess, encoder: 'mpeg4' });
   return { directory, inputPath, calls, modelRequests, engine, request: { id: 'fixed-id', inputPath, outputDirectory: path.join(directory, 'out'), sourceLanguage: 'en', targetLanguage: 'zh', outputMode: 'srt', textMode: 'bilingual', style: { fontScale: 1.6, colorHex: 'FFE066', position: 'top' } } };
 }
 

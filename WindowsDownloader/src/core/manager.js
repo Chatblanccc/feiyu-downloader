@@ -26,13 +26,13 @@ function cleanMetadata(metadata){
 }
 
 class DownloadManager extends EventEmitter {
-  constructor({tools,dataDirectory,downloadDirectory,concurrency=1,runner,engine,limits,environment}={}){
+  constructor({tools,dataDirectory,downloadDirectory,concurrency=1,runner,engine,limits,environment,sessionAuthentication,sessionMetadata,anonymousMetadata}={}){
     super();
     if(typeof dataDirectory!=='string'||!path.isAbsolute(dataDirectory)||typeof downloadDirectory!=='string'||!path.isAbsolute(downloadDirectory))throw new DownloadError('invalidDirectory');
     this.dataDirectory=path.resolve(dataDirectory);this.historyFile=path.join(this.dataDirectory,'download-history.json');this.receiptDirectory=path.join(this.dataDirectory,'download-receipts');
     this.options={downloadDirectory:path.resolve(downloadDirectory),quality:'best',authentication:{type:'none'},concurrency:Math.min(2,Math.max(1,Math.trunc(concurrency)||1))};
     this.tasks=[];this.active=new Map();this.ready=false;this.closing=false;this.pendingWrite=Promise.resolve();this.previewController=null;this.previewPromise=null;this.pumpScheduled=false;this.changeTimer=null;
-    this.engine=engine||new DownloadEngine({tools,runner,limits,environment,onResourceWarning:message=>this.emit('warning',message)});
+    this.engine=engine||new DownloadEngine({tools,runner,limits,environment,sessionAuthentication,sessionMetadata,anonymousMetadata,onResourceWarning:message=>this.emit('warning',message)});
   }
   async init(){
     if(this.ready)return this;

@@ -148,12 +148,14 @@ function applySettings(settings) {
 function renderLogin() {
   const browser = $('browser-select').value;
   $('choose-cookies').hidden = browser !== 'file';
+  $('open-website').hidden = browser !== 'session';
   $('cookies-path').hidden = browser !== 'file' || !ui.state.settings?.cookiesFile;
   setText('cookies-path', ui.state.settings?.cookiesFile || '');
   setText('login-explanation', browser === 'none'
-    ? '部分视频需要登录。选择浏览器后，登录信息仅用于本机对应网站的请求。'
-    : browser === 'file' ? '请选用你自行导出的 Cookie 文件，登录信息仅用于本机对应网站的请求。'
-      : `仅在你添加或重试任务时，读取所选 ${browser === 'chrome' ? 'Chrome' : browser === 'edge' ? 'Edge' : 'Firefox'} 的登录状态。`);
+    ? '直接粘贴链接即可下载，公开抖音视频会自动解析，无须切换登录状态。仅在网站要求登录或验证时，再选择登录方式。'
+    : browser === 'session' ? '粘贴链接后点击「打开视频网站」。在新窗口中完成网站验证或登录，确认视频可播放后关闭窗口，再返回解析或下载。会话仅保存在本机。'
+      : browser === 'file' ? '请选用你自行导出的 Cookie 文件，登录信息仅用于本机对应网站的请求。'
+        : `仅在你添加或重试任务时，读取所选 ${browser === 'chrome' ? 'Chrome' : browser === 'edge' ? 'Edge' : 'Firefox'} 的登录状态。Chrome/Edge 在 Windows 上可能无法解密，可改用「应用内网站会话」。`);
 }
 function renderView() {
   const subtitles = ui.view === 'subtitles';
@@ -511,6 +513,14 @@ $('share-text').addEventListener('input', () => {
 $('share-text').addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); if (!$('download-button').disabled) $('download-button').click(); } });
 $('quality-select').addEventListener('change', () => action('saveSettings', { quality: $('quality-select').value }));
 $('browser-select').addEventListener('change', () => { renderLogin(); action('saveSettings', { browser: $('browser-select').value }); });
+$('open-website').addEventListener('click', async () => {
+  const text = $('share-text').value.trim();
+  if (!text) { notice('请先粘贴需要下载的视频链接。', true); return; }
+  $('open-website').disabled = true;
+  try { await call('saveSettings', { browser: 'session' }); await call('openWebsite', text); }
+  catch (error) { notice(errorMessage(error), true); }
+  finally { $('open-website').disabled = false; }
+});
 $('choose-cookies').addEventListener('click', async () => {
   const result = await action('chooseCookiesFile'), path = pathValue(result);
   if (path) { ui.state.settings.cookiesFile = path; await action('saveSettings', { cookiesFile: path, browser: 'file' }); renderLogin(); }

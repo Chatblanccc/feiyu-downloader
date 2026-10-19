@@ -22,11 +22,11 @@ function style(value = DEFAULT_STYLE) {
   return { fontScale: value.fontScale, colorHex: value.colorHex.toUpperCase(), position: value.position };
 }
 class FeatherController extends EventEmitter {
-  constructor({ dataDirectory, downloadDirectory, tools, version = '0.3.0', engine, environment } = {}) {
+  constructor({ dataDirectory, downloadDirectory, tools, version = '0.3.2', engine, environment, sessionAuthentication, sessionMetadata, anonymousMetadata } = {}) {
     super(); Object.assign(this, { dataDirectory, tools, version, environment });
     this.settingsFile = path.join(dataDirectory, 'settings.json'); this.subtitlesFile = path.join(dataDirectory, 'subtitle-history.json');
     this.settings = { destination: downloadDirectory, quality: 'best', browser: 'none', cookiesFile: '', style: { ...DEFAULT_STYLE } };
-    this.downloads = new DownloadManager({ tools, dataDirectory, downloadDirectory, environment });
+    this.downloads = new DownloadManager({ tools, dataDirectory, downloadDirectory, environment, sessionAuthentication, sessionMetadata, anonymousMetadata });
     this.subtitleEngine = engine; this.subtitleTasks = []; this.subtitleProgress = null; this.models = { status: 'not-ready', progress: null, ready: false, error: null, languages: [] };
     this.previewResult = null; this.previewGeneration = 0; this.activeSubtitle = null; this.activePreparation = null; this.writeChain = Promise.resolve(); this.closing = false;
     this.downloads.on('change', () => this.changed()); this.downloads.on('warning', error => { this.notice = message(error); this.changed(); });
@@ -37,7 +37,7 @@ class FeatherController extends EventEmitter {
     if (saved) {
       if (typeof saved.destination === 'string' && path.isAbsolute(saved.destination)) this.settings.destination = saved.destination;
       if (['best', 'p1080', 'p720', 'audio'].includes(saved.quality)) this.settings.quality = saved.quality;
-      if (['none', 'chrome', 'edge', 'firefox', 'file'].includes(saved.browser)) this.settings.browser = saved.browser;
+      if (['none', 'chrome', 'edge', 'firefox', 'file', 'session'].includes(saved.browser)) this.settings.browser = saved.browser;
       if (typeof saved.cookiesFile === 'string' && path.isAbsolute(saved.cookiesFile)) this.settings.cookiesFile = saved.cookiesFile;
       if (saved.style) this.settings.style = style(saved.style);
     }
@@ -58,6 +58,7 @@ class FeatherController extends EventEmitter {
     await this.refreshModels(); await this.persistSubtitles(); this.changed(); return this;
   }
   authentication(strict = true) {
+    if (this.settings.browser === 'session') return { type: 'session' };
     if (this.settings.browser === 'file') {
       if (!this.settings.cookiesFile) { if (strict) throw new Error('请先选择 Cookie 文件。'); return { type: 'none' }; }
       return { type: 'file', path: this.settings.cookiesFile };
@@ -72,7 +73,7 @@ class FeatherController extends EventEmitter {
   async saveSettings(value = {}) {
     if ('destination' in value) { if (!path.isAbsolute(value.destination) || value.destination.includes('\0')) throw new Error('请选择有效保存目录。'); this.settings.destination = value.destination; }
     if ('quality' in value) { if (!['best', 'p1080', 'p720', 'audio'].includes(value.quality)) throw new Error('清晰度选项无效。'); this.settings.quality = value.quality; }
-    if ('browser' in value) { if (!['none', 'chrome', 'edge', 'firefox', 'file'].includes(value.browser)) throw new Error('浏览器选项无效。'); this.settings.browser = value.browser; }
+    if ('browser' in value) { if (!['none', 'chrome', 'edge', 'firefox', 'file', 'session'].includes(value.browser)) throw new Error('浏览器选项无效。'); this.settings.browser = value.browser; }
     if ('cookiesFile' in value) { if (value.cookiesFile && !path.isAbsolute(value.cookiesFile)) throw new Error('请选择有效 Cookie 文件。'); this.settings.cookiesFile = value.cookiesFile; }
     if ('style' in value) this.settings.style = style(value.style);
     await atomicJSON(this.settingsFile, this.settings); await this.downloads.setOptions({ downloadDirectory: this.settings.destination, quality: this.settings.quality, authentication: this.authentication(false) }); this.changed(); return this.snapshot();
