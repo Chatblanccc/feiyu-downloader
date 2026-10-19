@@ -18,11 +18,13 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Select JDK 21 and install SDK
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
-          echo "$JAVA_HOME_21_X64/bin" >> "$GITHUB_PATH"
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+      - name: Install SDK
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
       - name: Offline acceptance receipt tests
         run: python3 -m unittest discover -s AndroidDownloader/scripts -p 'test_*.py' -v
       - name: Build source and run checks
