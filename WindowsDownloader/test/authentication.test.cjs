@@ -85,6 +85,18 @@ test('site session cookies include the short link destination, exclude unrelated
   assert.throws(() => siteURL('file:///C:/private'), { code: 'noURL' });
 });
 
+test('iesdouyin share links retain the explicitly selected canonical Douyin session', () => {
+  const cookies = [
+    { domain: '.douyin.com', name: 'session', value: 'test-only', session: true },
+    { domain: '.iesdouyin.com', name: 'visitor', value: 'public-test', session: true },
+    { domain: '.unrelated.example', name: 'private', value: 'excluded', session: true }
+  ];
+  const content = cookieFileContent(cookies, 'https://www.iesdouyin.com/share/video/123456/');
+  assert.match(content, /session\ttest-only/);
+  assert.match(content, /visitor\tpublic-test/);
+  assert.doesNotMatch(content, /unrelated|excluded/);
+});
+
 test('explicit site-session selection uses a temporary scoped jar and cleans it after helper failure', async () => {
   let jar, cookieReads = 0;
   const fakeSession = {

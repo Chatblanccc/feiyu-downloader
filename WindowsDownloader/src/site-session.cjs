@@ -8,7 +8,7 @@ const { readDouyinPage, douyinInfo, supportsDouyinURL, douyinVideoID } = require
 
 // Short-link hosts and their destination sites share one explicitly selected session.
 const SITE_GROUPS = [
-  ['douyin.com'], ['b23.tv', 'bilibili.com'], ['youtu.be', 'youtube.com'],
+  ['douyin.com', 'iesdouyin.com'], ['b23.tv', 'bilibili.com'], ['youtu.be', 'youtube.com'],
   ['x.com', 'twitter.com', 't.co'], ['xiaohongshu.com', 'xhslink.com'],
   ['tiktok.com'], ['kuaishou.com', 'gifshow.com']
 ];
