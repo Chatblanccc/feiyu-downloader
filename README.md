@@ -6,13 +6,15 @@
 
 | 版本 | 技术 | 系统要求 | 说明 |
 | --- | --- | --- | --- |
-| [macOS 0.4.1](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载 macOS 13+，字幕 macOS 26+ | 使用 Apple 系统语音识别与翻译 |
+| [macOS 0.5.0](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载和 AI 修复 macOS 13+，字幕 macOS 26+ | 本地整片画质增强与局部 AI 修复；HLS/DASH 8 分片并发 |
 | [Windows 0.4.1](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
+| [Android 0.1.0-alpha02](AndroidDownloader/README.md) | Kotlin / Jetpack Compose | Android 10+，ARM64 | 下载功能内测版，验收状态见模块报告 |
 
 - 支持粘贴视频链接或完整分享文案，选择画质和保存位置。
 - 下载任务、进度、取消与重试；完成时核对实际输出文件。
 - 生成 SRT、可开关字幕轨或直接显示在画面中的字幕。
 - 可调整字幕字号、颜色与位置。
+- Mac 可整片自动检测规则像素马赛克并做局部 AI 补画，画质增强和局部修复默认同时开启；效果与识别范围见 Mac 说明。
 - 浏览器登录状态仅在用户主动选择后使用。
 
 各网站能否下载取决于内容权限、网站变化和网络环境，不保证所有链接可用。请仅下载自己拥有或已获得许可的内容，并遵守网站条款。
@@ -56,6 +58,6 @@ Windows 0.3.2 已有 Windows 实机下载验证；0.4.0 更新功能的 Windows 
 
 ## 许可
 
-本项目原创代码采用 [MIT License](LICENSE)。第三方工具、运行时、字体和模型遵循各自许可；MIT 不替代这些许可。来源与声明见 [Windows 第三方说明](WindowsDownloader/docs/third-party/组件来源.md)、[字体许可](WindowsDownloader/docs/fonts-notices/README.md)和各平台依赖获取脚本。
+macOS、Windows 原创代码采用 [MIT License](LICENSE)；Android 模块采用 [GPL-3.0](AndroidDownloader/LICENSE)。第三方工具、运行时、字体和模型遵循各自许可；项目许可不替代这些许可。来源与声明见 [Android 第三方说明](AndroidDownloader/docs/THIRD_PARTY.md)、[Windows 第三方说明](WindowsDownloader/docs/third-party/组件来源.md)、[字体许可](WindowsDownloader/docs/fonts-notices/README.md)和各平台依赖获取脚本。
 
 欢迎通过 Issues 报告问题，或提交 Pull Request。报告问题时请注明系统版本、软件版本、复现步骤及已去除个人信息的错误提示；请勿提交 Cookie、账号凭据或私人媒体。

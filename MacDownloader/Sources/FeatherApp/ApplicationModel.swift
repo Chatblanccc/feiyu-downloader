@@ -108,6 +108,7 @@ final class ProgressMailbox: @unchecked Sendable {
 
 @MainActor final class ApplicationModel: ObservableObject {
     let subtitleFeature = SubtitleFeature()
+    let videoRepairFeature = VideoRepairFeature()
     @Published var shareText = ""
     @Published var quality: DownloadQuality = .best
     @Published var preview: VideoMetadata?
@@ -128,17 +129,18 @@ final class ProgressMailbox: @unchecked Sendable {
     /// after the visible state has changed. Queued downloads must also finish.
     var hasActiveWorkForUpdate: Bool {
         worker != nil || previewTask != nil || pendingPreview != nil || isResolving ||
-        activeCount > 0 || subtitleFeature.hasActiveWorkForUpdate
+        activeCount > 0 || subtitleFeature.hasActiveWorkForUpdate || videoRepairFeature.hasActiveWorkForUpdate
     }
 
     enum SidebarSection: String, CaseIterable {
-        case all = "全部任务", active = "下载中", completed = "已完成", subtitles = "翻译与字幕"
+        case all = "全部任务", active = "下载中", completed = "已完成", subtitles = "翻译与字幕", videoRepair = "AI 视频修复"
         var icon: String {
             switch self {
             case .all: return "square.stack.3d.up"
             case .active: return "arrow.down.circle"
             case .completed: return "checkmark.circle"
             case .subtitles: return "captions.bubble"
+            case .videoRepair: return "wand.and.stars"
             }
         }
     }
@@ -213,7 +215,7 @@ final class ProgressMailbox: @unchecked Sendable {
             case .all: return true
             case .active: return item.state.isActive || item.state == .queued
             case .completed: return item.state == .completed
-            case .subtitles: return false
+            case .subtitles, .videoRepair: return false
             }
         }
     }
@@ -298,6 +300,7 @@ final class ProgressMailbox: @unchecked Sendable {
         download?.cancel()
         stopProgressUpdates()
         await subtitleFeature.shutdown()
+        await videoRepairFeature.shutdown()
         await preview?.value
         await download?.value
         persist()
@@ -314,6 +317,19 @@ final class ProgressMailbox: @unchecked Sendable {
         }
         subtitleFeature.model.selectFile(file)
         selectedSection = .subtitles
+    }
+
+    func openVideoRepair(for item: DownloadItem) {
+        guard let file = item.fileURL, FileManager.default.fileExists(atPath: file.path) else {
+            notification = "这个视频已被移动或删除，请重新选择本地文件。"
+            return
+        }
+        guard !videoRepairFeature.model.isBusy else {
+            selectedSection = .videoRepair
+            return
+        }
+        videoRepairFeature.model.selectFile(file)
+        selectedSection = .videoRepair
     }
 
     func cancelPreview() {

@@ -7,25 +7,31 @@ import Darwin
 @main enum FeatherLauncher {
     static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        if arguments.contains("--smoke-test") || arguments.contains("--integration-test") || arguments.contains("--diagnose") || arguments.contains("--ui-lifecycle-test") || arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") {
+        if arguments.contains("--smoke-test") || arguments.contains("--integration-test") || arguments.contains("--diagnose") || arguments.contains("--ui-lifecycle-test") || arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") || arguments.contains("--video-repair-integration-test") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
             let task = Task {
                 let status: Int32
-                if arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") {
+                if arguments.contains("--video-repair-integration-test") {
+                    status = await VideoRepairCLI.run(arguments)
+                } else if arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") {
                     status = await SubtitleCLI.run(arguments)
                 } else { status = await FeatherCLI.run(arguments) }
                 fflush(stdout)
                 exit(status)
             }
-            if arguments.contains("--subtitle-worker") {
-                // Let native services cancel and release their language reservation
-                // before the parent runner's bounded SIGKILL fallback.
+            if arguments.contains("--subtitle-worker") || arguments.contains("--video-repair-integration-test") {
+                // Route external CLI cancellation through task cleanup, so native
+                // services and owned helper groups stop before this process exits.
                 signal(SIGTERM, SIG_IGN)
+                signal(SIGINT, SIG_IGN)
                 let cancellation = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global(qos: .userInitiated))
                 cancellation.setEventHandler { task.cancel() }
                 cancellation.resume()
-                withExtendedLifetime(cancellation) { application.run() }
+                let interruption = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global(qos: .userInitiated))
+                interruption.setEventHandler { task.cancel() }
+                interruption.resume()
+                withExtendedLifetime((cancellation, interruption)) { application.run() }
             } else { application.run() }
         } else {
             AppEmergencyGuard.start()

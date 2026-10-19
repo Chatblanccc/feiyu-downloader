@@ -11,6 +11,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / "MacDownloader"
 VENDOR = ROOT / "work" / "vendor"
+REPAIR = VENDOR / "video-repair"
 OUTPUT = ROOT / "outputs"
 APP = OUTPUT / "飞羽下载.app"
 RELEASE = json.loads((PROJECT / "Release.json").read_text())
@@ -20,7 +21,57 @@ UPDATE_FEED = "https://raw.githubusercontent.com/Chatblanccc/feiyu-downloader/ma
 def run(*args, **kwargs):
     subprocess.run([str(a) for a in args], check=True, **kwargs)
 
+def source_files():
+    return [path for path in sorted(PROJECT.rglob("*")) if path.is_file() and
+            not any(part in {".build", ".swiftpm", "Validation", "__pycache__", ".DS_Store"}
+                    for part in path.relative_to(PROJECT).parts)]
+
+def source_hashes():
+    return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in source_files()}
+
+def verify_repair_runtime():
+    manifest_path = REPAIR / "manifest.json"
+    if not manifest_path.is_file():
+        raise SystemExit("Missing offline AI runtime; run scripts/fetch-video-repair.py first")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("offline") is not True or manifest.get("architecture") != "arm64":
+        raise SystemExit("AI runtime must be an offline arm64 build")
+    for item in manifest["files"]:
+        path = REPAIR / item["path"]
+        if REPAIR.resolve() not in path.resolve().parents or not path.is_file():
+            raise SystemExit("Invalid AI runtime file: " + item["path"])
+        if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
+            raise SystemExit("AI runtime checksum changed: " + item["path"])
+    for source in (PROJECT / "VideoRepairWorker").glob("*.py"):
+        if (REPAIR / source.name).read_bytes() != source.read_bytes():
+            raise SystemExit("AI worker source changed; refresh runtime before packaging: " + source.name)
+    return manifest
+
+def sign_repair_runtime(directory):
+    # Python extension modules and their dynamic libraries are nested executable
+    # code. Sign every real Mach-O file before sealing the enclosing application.
+    magic = {b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xfe\xed\xfa\xce",
+             b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca", b"\xca\xfe\xba\xbf", b"\xbf\xba\xfe\xca"}
+    files = []
+    for path in directory.rglob("*"):
+        if path.is_symlink() or not path.is_file():
+            continue
+        with path.open("rb") as stream:
+            if stream.read(4) in magic:
+                files.append(path)
+    for path in sorted(files, key=lambda p: (-len(p.parts), str(p))):
+        run("codesign", "--force", "--sign", "-", "--timestamp=none", path,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    manifest_path = directory / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["localSigning"] = "ad-hoc; not Developer ID signed or notarized"
+    manifest["packagedMachOFiles"] = [{"path": str(path.relative_to(directory)),
+        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size} for path in files]
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+
 def main():
+    verify_repair_runtime()
+    before_build = source_hashes()
     public_key_path = ROOT / "updates" / "macos" / "public-key.txt"
     if not public_key_path.is_file():
         raise SystemExit("Missing Sparkle public key: " + str(public_key_path))
@@ -42,6 +93,18 @@ def main():
         if hashlib.sha256((VENDOR / entry["name"]).read_bytes()).hexdigest() != entry["sha256"]:
             raise SystemExit("Tool checksum changed: " + entry["name"])
     run("swift", "build", "-c", "release", "--arch", "arm64", cwd=PROJECT)
+    if source_hashes() != before_build:
+        raise SystemExit("Mac sources changed while compiling; rebuild the current candidate")
+    snapshot = ROOT / "work" / "validation" / ("v" + VERSION) / "source-snapshot"
+    if snapshot.exists():
+        shutil.rmtree(snapshot)
+    for source in source_files():
+        target = snapshot / source.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+    shutil.copy2(ROOT / "LICENSE", snapshot / "LICENSE")
+    if source_hashes() != before_build:
+        raise SystemExit("Mac sources changed while freezing their matching source delivery")
     bin_path = Path(subprocess.check_output(["swift", "build", "-c", "release", "--arch", "arm64", "--show-bin-path"], cwd=PROJECT, text=True).strip())
     if APP.exists():
         shutil.rmtree(APP)
@@ -78,6 +141,9 @@ def main():
         raise SystemExit("Missing Sparkle license in the verified Swift package artifact")
     shutil.copy2(sparkle_license, resources / "Licenses" / "Sparkle-LICENSE.txt")
     shutil.copy2(VENDOR / "tools-manifest.json", resources / "tools-manifest.json")
+    shutil.copytree(REPAIR, resources / "VideoRepair", symlinks=True,
+                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
+    sign_repair_runtime(resources / "VideoRepair")
     # Local validation reports can contain private source URLs and do not describe
     # this release. Keep them outside the distributable application bundle.
     iconset = ROOT / "work" / "Feather.iconset"
@@ -122,6 +188,8 @@ def main():
     manifest["appMinimumOS"] = "13.0"
     manifest["appLinkedSDK"] = sdk_version
     (resources / "tools-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (resources / "source-manifest.json").write_text(json.dumps({"version": VERSION,
+        "build": RELEASE["build"], "files": before_build}, ensure_ascii=False, indent=2) + "\n")
     run("codesign", "--force", "--sign", "-", "--timestamp=none", APP)
     run("codesign", "--verify", "--deep", "--strict", "--verbose=2", APP)
     print("APP_READY", APP, flush=True)
