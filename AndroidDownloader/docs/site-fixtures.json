@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "notes": "公开视频候选；列出不代表 Android 下载已通过。仅 matrix.json 中带真实音视频文件回执的 passed 条目计入验收。不同链接必须指向不同视频 ID。",
+  "fixtures": [
+    {
+      "id": "tiktok-1",
+      "site": "tiktok",
+      "url": "https://www.tiktok.com/@pokemonlife22/video/7059698374567611694",
+      "quality": "P720",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/tiktok.py"
+    },
+    {
+      "id": "tiktok-2",
+      "site": "tiktok",
+      "url": "https://www.tiktok.com/@patroxofficial/video/6742501081818877190",
+      "quality": "BEST",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/tiktok.py"
+    },
+    {
+      "id": "douyin-1",
+      "site": "douyin",
+      "url": "https://v.douyin.com/TO1VPfoI2NA/",
+      "quality": "BEST",
+      "source": "Existing real Feiyu share-link regression"
+    },
+    {
+      "id": "douyin-2",
+      "site": "douyin",
+      "url": "https://www.douyin.com/video/7690725127385894198",
+      "quality": "BEST",
+      "source": "Existing public recent-video regression"
+    },
+    {
+      "id": "kuaishou-1",
+      "site": "kuaishou",
+      "url": "https://www.kuaishou.com/short-video/3x5jvmsmmiahx3m?authorId=3xt4m66xxjt3qgq",
+      "quality": "BEST",
+      "source": "https://github.com/yt-dlp/yt-dlp/issues/14010"
+    },
+    {
+      "id": "kuaishou-2",
+      "site": "kuaishou",
+      "url": "https://www.kuaishou.com/short-video/3xqf2nbqfikruck?authorId=renminwang",
+      "quality": "BEST",
+      "source": "https://live.kuaishou.com/live_api/profile/feedbyid?photoId=3xqf2nbqfikruck&principalId=renminwang",
+      "hostPrecheck": {
+        "bytes": 2553892,
+        "durationSeconds": 7.800998,
+        "streams": [
+          "video",
+          "audio"
+        ]
+      }
+    },
+    {
+      "id": "bilibili-1",
+      "site": "bilibili",
+      "url": "https://www.bilibili.com/video/BV1nx411u79K",
+      "quality": "P720",
+      "source": "https://www.bilibili.com/video/BV1nx411u79K"
+    },
+    {
+      "id": "bilibili-2",
+      "site": "bilibili",
+      "url": "https://www.bilibili.com/video/BV13x41117TL",
+      "quality": "P720",
+      "source": "https://www.bilibili.com/video/BV13x41117TL"
+    },
+    {
+      "id": "youtube-1",
+      "site": "youtube",
+      "url": "https://www.youtube.com/watch?v=tjjjtzRLHvA",
+      "quality": "P720",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/youtube/_video.py"
+    },
+    {
+      "id": "youtube-2",
+      "site": "youtube",
+      "url": "https://www.youtube.com/watch?v=el3E4MbxRqQ",
+      "quality": "P720",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/youtube/_video.py",
+      "hostPrecheck": {
+        "bytes": 12953,
+        "durationSeconds": 5.014,
+        "streams": [
+          "video",
+          "audio"
+        ]
+      }
+    },
+    {
+      "id": "x-1",
+      "site": "x",
+      "url": "https://twitter.com/captainamerica/status/719944021058060289",
+      "quality": "P720",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/twitter.py"
+    },
+    {
+      "id": "x-2",
+      "site": "x",
+      "url": "https://twitter.com/MesoMax919/status/1575560063510810624",
+      "quality": "P720",
+      "source": "https://github.com/yt-dlp/yt-dlp/blob/2026.08.19/yt_dlp/extractor/twitter.py",
+      "hostPrecheck": {
+        "bytes": 4327311,
+        "durationSeconds": 21.333333,
+        "streams": [
+          "video",
+          "audio"
+        ]
+      }
+    }
+  ]
+}

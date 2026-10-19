@@ -17,14 +17,14 @@ CONFIGURE = [
     "--arch=arm64", "--cc=/usr/bin/clang", "--extra-cflags=-mmacosx-version-min=13.0", "--extra-ldflags=-mmacosx-version-min=13.0",
     "--disable-shared", "--enable-static", "--disable-autodetect", "--disable-doc", "--disable-debug", "--disable-ffplay",
     "--disable-gpl", "--disable-nonfree", "--disable-version3", "--disable-everything", "--enable-ffmpeg", "--enable-ffprobe",
-    "--enable-network", "--enable-securetransport", "--enable-protocol=file,http,https,tcp,tls,crypto,pipe,data",
-    "--enable-demuxer=mov,matroska,webm_dash_manifest,mp3,aac,flac,ogg,wav,mpegts,hls,concat,srt",
-    "--enable-muxer=mp4,mov,matroska,mp3,adts,ipod,null,flac,ogg,wav",
+    "--enable-network", "--enable-securetransport", "--enable-videotoolbox", "--enable-protocol=file,http,https,tcp,tls,crypto,pipe,data",
+    "--enable-demuxer=mov,matroska,webm_dash_manifest,mp3,aac,flac,ogg,wav,mpegts,hls,concat,srt,rawvideo,image2,image2pipe",
+    "--enable-muxer=mp4,mov,matroska,mp3,adts,ipod,null,flac,ogg,wav,rawvideo,image2,image2pipe",
     "--enable-parser=aac,h264,hevc,av1,vp8,vp9,opus,vorbis,flac,mpegaudio",
-    "--enable-decoder=aac,h264,hevc,av1,vp8,vp9,opus,vorbis,mp3,flac,pcm_s16le,alac,subrip,movtext",
-    "--enable-encoder=aac,pcm_s16le,flac,wrapped_avframe,movtext",
+    "--enable-decoder=aac,h264,hevc,av1,vp8,vp9,opus,vorbis,mp3,flac,pcm_s16le,alac,subrip,movtext,rawvideo,png,mjpeg,mpeg4",
+    "--enable-encoder=aac,pcm_s16le,flac,wrapped_avframe,movtext,rawvideo,png,h264_videotoolbox",
     "--enable-bsf=aac_adtstoasc,h264_mp4toannexb,hevc_mp4toannexb,extract_extradata,av1_metadata,vp9_superframe",
-    "--enable-filter=aresample,anull,null,format,scale,trim,atrim,asetpts,setpts"
+    "--enable-filter=aresample,anull,null,format,scale,trim,atrim,asetpts,setpts,fps"
 ]
 
 def run(*arguments, **kwargs):

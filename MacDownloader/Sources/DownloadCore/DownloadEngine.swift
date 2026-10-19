@@ -84,6 +84,19 @@ public final class DownloadEngine: @unchecked Sendable {
             // A single direct source has no extractor height tags for yt-dlp's format filter.
             formatSelector = metadata.resolvedAudioURL == nil ? "best" : "bv+ba"
         }
+        if metadata.resolvedMediaURL == nil, quality != .audio,
+           let host = metadata.sourceURL.host?.lowercased(),
+           host == "x.com" || host.hasSuffix(".x.com") ||
+           host == "twitter.com" || host.hasSuffix(".twitter.com") {
+            let maximum = quality == .p720 ? 720 : quality == .p1080 ? 1_080 : Int.max
+            if let height = metadata.availableHeights.first(where: { $0 <= maximum }) {
+                // X also offers single-connection MP4s. Prefer parallel HLS at the
+                // same requested height, retaining the original selector as fallback.
+                let video = "bv[protocol=m3u8_native][height=\(height)]"
+                let muxed = "b[protocol=m3u8_native][height=\(height)]"
+                formatSelector = video + "+ba[protocol=m3u8_native]/" + muxed + "/" + formatSelector
+            }
+        }
         let preparedInfo = try PreparedMediaInfo(metadata)
         defer { preparedInfo.removeTemporaryFiles() }
         // Audio post-processing deletes its own downloaded input; use a separate name so it
@@ -93,6 +106,9 @@ public final class DownloadEngine: @unchecked Sendable {
             : "%(title).180B [%(id)s].%(ext)s"
         var arguments = commonArguments + auth.arguments + [
             "--no-simulate", "--quiet", "--newline", "--progress", "--progress-delta", "0.5",
+            // Fetch independent HLS/DASH fragments in parallel. Ordinary HTTP files
+            // keep the native downloader, and --continue retains partial downloads.
+            "--concurrent-fragments", "8",
             "--progress-template", "download:" + StructuredDownloadOutput.progressPrefix
                 + #"{"status":%(progress.status|null)j,"downloaded_bytes":%(progress.downloaded_bytes|null)j,"total_bytes":%(progress.total_bytes|null)j,"total_bytes_estimate":%(progress.total_bytes_estimate|null)j,"speed":%(progress.speed|null)j,"eta":%(progress.eta|null)j,"item":%(info.format_id|null)j}"#,
             "--progress-template", "postprocess:" + StructuredDownloadOutput.progressPrefix

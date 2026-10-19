@@ -1,8 +1,16 @@
 # 飞羽下载
 
-原生 macOS 视频下载工具。0.4.1 统一软件内飞羽标志，保留 GitHub 检查更新，并可调整字幕字号、文字颜色和位置，并保留视频翻译、字幕文件和带字幕视频导出功能。
+原生 macOS 视频下载工具。0.5.0 新增本地 AI 视频修复：画质增强和疑似马赛克局部补画默认同时开启，自动处理整个视频，无需选片段或框选区域。保留 HLS/DASH 8 个分片并发、断点续传、GitHub 检查更新、翻译与字幕功能。
 
 适用于 Apple Silicon（M 系列）Mac。视频下载需要 macOS 13 或更新版本；视频翻译与字幕需要 macOS 26 或更新版本。实际验证环境见交付包的验收报告。
+
+## AI 视频修复
+
+进入侧栏“AI 视频修复”，从已下载任务中选一个视频，或导入本地视频，点击“开始整片 AI 修复”。画质增强与局部 AI 修复默认开启，也可分别关闭。程序逐帧处理完整视频，自动检测多处规则像素马赛克，输出原尺寸 MP4，保留声音和原文件；完成后可播放、在 Finder 中显示或查看修复报告。
+
+画质增强使用 Real-ESRGAN 通用轻量模型，优先通过 PyTorch MPS 使用 Mac GPU，无法使用时回退到 CPU；局部修复使用规则网格检测与 LaMa AI 网格边缘补画，并保留输入的低频颜色和轮廓。它是实验性内容重建，无法保证恢复真实人物、文字或已丢失的细节。自动识别可能漏检、误检；模糊遮挡、纯色遮挡和不规则打码不保证识别。逐帧修复可能出现纹理闪烁，HDR 输入会转成 SDR。请对照原片检查输出。
+
+所有推理在本机完成，模型和独立运行时随安装包提供，不上传视频，不需要另装 Python 或 AI 工具。任务采用有界帧批次和独立进程组，支持进度、取消、完成凭据与重开恢复。较长或较高分辨率视频可能需要较长时间；本轮真实短视频验收不代表长片速度或所有素材的效果。
 
 ## 视频翻译与字幕
 
@@ -26,7 +34,9 @@ X 的“未返回可下载视频”与“帖子已删除”会分别提示。某
 
 ## 下载与安装
 
-打开 `飞羽下载-0.4.1-AppleSilicon.dmg`，将“飞羽下载”拖到 Applications（应用程序），再从应用程序中打开。粘贴视频链接或完整分享文案，选择画质与保存文件夹即可下载；默认保存到 `~/Downloads/飞羽下载`。
+打开 `飞羽下载-0.5.0-AppleSilicon.dmg`，将“飞羽下载”拖到 Applications（应用程序），再从应用程序中打开。粘贴视频链接或完整分享文案，选择画质与保存文件夹即可下载；默认保存到 `~/Downloads/飞羽下载`。
+
+HLS/DASH 使用 8 个分片并发，普通 HTTP 视频继续使用原生下载方式。任务队列逐条处理，取消后重试会尽可能继续已有下载；更换画质或来源格式时可能重新下载。提高分片并发不会绕过源站或代理的总带宽限制。
 
 界面使用 SwiftUI，下载核心使用 Foundation，内置 yt-dlp、Deno、FFmpeg/ffprobe，macOS 系统 WebKit 为特定网站提供临时浏览器解析。
 
@@ -37,11 +47,14 @@ X 的“未返回可下载视频”与“帖子已删除”会分别提示。某
 ```sh
 python3 MacDownloader/scripts/fetch-tools.py
 python3 MacDownloader/scripts/build-ffmpeg.py
+python3 MacDownloader/scripts/fetch-video-repair.py
 python3 MacDownloader/scripts/build-app.py
 python3 MacDownloader/scripts/package-dmg.py
 ```
 
 `fetch-tools.py` 使用固定的上游版本与官方校验和；`build-ffmpeg.py` 从官方未修改源代码构建只含所需模块的 LGPL 配置，禁止 GPL、nonfree 与外部编码库。应用打包前复核组件哈希，再逐个本地签名并封存 app。完整构建参数与上游许可随 app 保存在 Resources/Licenses。
+
+`fetch-video-repair.py` 准备独立 Python、推理依赖及模型，下载和哈希记录随 app 保存在 `Resources/VideoRepair/manifest.json`，组件许可位于同目录 `licenses`。FFmpeg 新增 Apple VideoToolbox H.264 编码和 rawvideo 管线。
 
 ## 核心验证
 

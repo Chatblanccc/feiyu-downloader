@@ -34,6 +34,8 @@ struct FeatherRootView: View {
                             }
                             .padding(24).frame(maxWidth: .infinity, alignment: .leading)
                             .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                        } else if model.selectedSection == .videoRepair {
+                            VideoRepairWorkspaceView(model: model.videoRepairFeature.model, downloads: model.items)
                         } else if model.selectedSection == .subtitles {
                             if #available(macOS 26, *) {
                                 SubtitleWorkspaceView(model: model.subtitleFeature.model, downloads: model.items)
@@ -126,7 +128,7 @@ struct FeatherRootView: View {
         case .all: return model.items.count
         case .active: return model.activeCount
         case .completed: return model.completedCount
-        case .subtitles: return 0
+        case .subtitles, .videoRepair: return 0
         }
     }
 
@@ -135,7 +137,7 @@ struct FeatherRootView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(model.selectedSection == .all ? "把喜欢的视频，留在手边。" : model.selectedSection.rawValue)
                     .font(.system(size: 21, weight: .semibold)).foregroundStyle(featherInk)
-                Text(model.selectedSection == .all ? "粘贴分享内容，让下载变得简单。" : model.selectedSection == .subtitles ? "选好语言，让视频更容易看懂。" : "视频文件与下载记录，随时可查。")
+                Text(model.selectedSection == .all ? "粘贴分享内容，让下载变得简单。" : model.selectedSection == .subtitles ? "选好语言，让视频更容易看懂。" : model.selectedSection == .videoRepair ? "整片自动检测，在本机增强与修复画面。" : "视频文件与下载记录，随时可查。")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer()
@@ -621,6 +623,8 @@ struct DownloadRow: View {
                     Button { model.reveal(item) } label: { Image(systemName: "magnifyingglass") }.help("在 Finder 中显示").accessibilityLabel("在 Finder 中显示")
                     Button { DispatchQueue.main.async { model.openSubtitles(for: item) } } label: { Image(systemName: "captions.bubble") }
                         .help("翻译并添加字幕").accessibilityLabel("翻译并添加字幕")
+                    Button { DispatchQueue.main.async { model.openVideoRepair(for: item) } } label: { Image(systemName: "wand.and.stars") }
+                        .help("AI 视频修复").accessibilityLabel("AI 视频修复")
                 } else if item.state.canRetry {
                     // Leave the native button transaction before changing this row's
                     // structure. Updating selectable text and controls inside AXPress
@@ -639,6 +643,7 @@ struct DownloadRow: View {
                 if let error = item.error { Button("复制错误信息") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(error, forType: .string) } }
                 if item.state == .completed { Button("在 Finder 中显示") { model.reveal(item) } }
                 if item.state == .completed { Button("翻译并添加字幕") { DispatchQueue.main.async { model.openSubtitles(for: item) } } }
+                if item.state == .completed { Button("AI 视频修复") { DispatchQueue.main.async { model.openVideoRepair(for: item) } } }
                 if item.state.canRetry { Button("重试下载") { DispatchQueue.main.async { model.retry(item.id) } } }
                 if !item.state.isActive && item.state != .queued { Button("移除记录") { model.remove(item.id) } }
             }
