@@ -1,0 +1,20 @@
+# Local builds, downloads and private validation data
+.DS_Store
+work/
+outputs/
+.build/
+.swiftpm/
+node_modules/
+WindowsDownloader/vendor/*
+!WindowsDownloader/vendor/win-x64/
+WindowsDownloader/vendor/win-x64/*
+!WindowsDownloader/vendor/win-x64/fonts/
+!WindowsDownloader/vendor/win-x64/tools-manifest.json
+MacDownloader/Validation/
+WindowsDownloader/docs/功能验证记录.json
+.env
+.env.*
+!.env.example
+*.log
+*.cookies
+cookies.txt

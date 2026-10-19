@@ -1,0 +1,249 @@
+{
+  "passed": true,
+  "scope": "Static OpenType cmap mapping for these 18 sample strings plus all file size/SHA-256 checks; does not establish all Unicode coverage, complex-script shaping or runtime font fallback.",
+  "font_codepoints": {
+    "Noto Sans CJK SC": 44810,
+    "Noto Sans": 2840,
+    "Noto Sans Arabic": 1551,
+    "Noto Sans Devanagari": 551,
+    "Noto Sans Thai": 426
+  },
+  "samples": [
+    {
+      "language": "zh",
+      "sample": "让每一段故事都听得懂。",
+      "unique_characters": 11,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC"
+      ]
+    },
+    {
+      "language": "en",
+      "sample": "Every story deserves to be understood.",
+      "unique_characters": 13,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "ja",
+      "sample": "こんにちは。字幕を読みます。",
+      "unique_characters": 13,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC"
+      ]
+    },
+    {
+      "language": "ko",
+      "sample": "안녕하세요. 모든 이야기를 이해해요.",
+      "unique_characters": 13,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "de",
+      "sample": "Grüße aus Köln. Verständliche Untertitel.",
+      "unique_characters": 21,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "fr",
+      "sample": "Français : être compris, bientôt.",
+      "unique_characters": 19,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "es",
+      "sample": "¡Hola! Vídeos con traducción.",
+      "unique_characters": 19,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "pt",
+      "sample": "Olá! Tradução e legendas em português.",
+      "unique_characters": 21,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "it",
+      "sample": "Ciao, perché ogni storia conta.",
+      "unique_characters": 16,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "ru",
+      "sample": "Здравствуйте. Перевод и субтитры.",
+      "unique_characters": 16,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "ar",
+      "sample": "مرحبًا بالعالم. ترجمة الفيديو.",
+      "unique_characters": 16,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "hi",
+      "sample": "नमस्ते दुनिया। वीडियो के उपशीर्षक।",
+      "unique_characters": 22,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans Devanagari"
+      ]
+    },
+    {
+      "language": "th",
+      "sample": "สวัสดี โลก คำบรรยายวิดีโอ",
+      "unique_characters": 16,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "vi",
+      "sample": "Xin chào! Phụ đề tiếng Việt dễ hiểu.",
+      "unique_characters": 22,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "id",
+      "sample": "Halo dunia. Terjemahan video.",
+      "unique_characters": 16,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "tr",
+      "sample": "İyi günler! Türkçe çeviri ve altyazı.",
+      "unique_characters": 19,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "uk",
+      "sample": "Привіт! Українські субтитри, їжа й ґанок.",
+      "unique_characters": 22,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    },
+    {
+      "language": "nl",
+      "sample": "Goedendag, video's met ondertiteling.",
+      "unique_characters": 17,
+      "passed": true,
+      "missing": [],
+      "contributing_families": [
+        "Noto Sans CJK SC",
+        "Noto Sans",
+        "Noto Sans Arabic",
+        "Noto Sans Devanagari",
+        "Noto Sans Thai"
+      ]
+    }
+  ]
+}

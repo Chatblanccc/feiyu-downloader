@@ -1,0 +1,99 @@
+{
+  "name": "feiyu-downloader",
+  "version": "0.3.0",
+  "description": "飞羽下载 · 视频下载、翻译与字幕",
+  "main": "src/main.cjs",
+  "author": "Feiyu",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.*",
+    "dist:win": "node scripts/fetch-windows-node-deps.cjs && electron-builder --win nsis --x64",
+    "dist:mac-test": "electron-builder --mac dir --arm64"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.8.1"
+  },
+  "devDependencies": {
+    "electron": "44.9.0",
+    "electron-builder": "26.0.12",
+    "@electron/asar": "3.4.1",
+    "resedit": "2.0.3"
+  },
+  "build": {
+    "appId": "io.feather.videodownloader.windows",
+    "productName": "飞羽下载",
+    "copyright": "Copyright © 2026 Feiyu",
+    "asar": false,
+    "npmRebuild": false,
+    "directories": {
+      "output": "../work/windows-build",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "renderer/**/*",
+      "package.json",
+      "assets/icon.png",
+      "!node_modules/onnxruntime-node/bin/napi-v3/darwin/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v3/linux/**/*",
+      "!node_modules/onnxruntime-node/bin/napi-v3/win32/arm64/**/*",
+      "!node_modules/@img/sharp-darwin-arm64/**/*",
+      "!node_modules/@img/sharp-libvips-darwin-arm64/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/win-x64",
+        "to": "tools",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "docs",
+        "to": "docs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "FeiyuDownload-${version}-Windows-x64-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "飞羽下载",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "language": "2052",
+      "displayLanguageSelector": false,
+      "runAfterFinish": true
+    },
+    "mac": {
+      "target": "dir",
+      "identity": null,
+      "category": "public.app-category.utilities"
+    },
+    "afterPack": "scripts/edit-resources.cjs"
+  },
+  "overrides": {
+    "sharp": "0.35.5"
+  }
+}

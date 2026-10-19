@@ -1,0 +1,155 @@
+{
+  "format": 1,
+  "prepared": "2026-10-19",
+  "purpose": "Bundled unmodified subtitle-rendering fonts; no system font installation.",
+  "default_family": "Noto Sans CJK SC",
+  "assets": [
+    {
+      "filename": "NotoSansCJKsc-Regular.otf",
+      "repo": "notofonts/noto-cjk",
+      "commit": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+      "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/LICENSE",
+      "license_file": "NotoSansCJK-OFL.txt",
+      "family": "Noto Sans CJK SC",
+      "font_names": {
+        "0": "© 2014-2021 Adobe (http://www.adobe.com/).",
+        "1": "Noto Sans CJK SC",
+        "2": "Regular",
+        "4": "Noto Sans CJK SC",
+        "5": "Version 2.004;hotconv 1.0.118;makeotfexe 2.5.65603",
+        "6": "NotoSansCJKsc-Regular",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.",
+        "16": ""
+      },
+      "bytes": 16437364,
+      "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+      "license": "OFL-1.1",
+      "license_sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+      "modified": false
+    },
+    {
+      "filename": "NotoSans-Regular.ttf",
+      "repo": "notofonts/noto-fonts",
+      "commit": "ffebf8c1ee449e544955a7e813c54f9b73848eac",
+      "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-Regular.ttf",
+      "license_url": "https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/LICENSE",
+      "license_file": "NotoSans-OFL.txt",
+      "note": "Official archived Noto static regular build; pinned to its final repository commit.",
+      "family": "Noto Sans",
+      "font_names": {
+        "0": "Copyright 2015-2021 Google LLC. All Rights Reserved.",
+        "1": "Noto Sans",
+        "2": "Regular",
+        "4": "Noto Sans Regular",
+        "5": "Version 2.008; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D latn -f none -a qsq -X \"\"",
+        "6": "NotoSans-Regular",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.",
+        "16": ""
+      },
+      "bytes": 569208,
+      "sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5",
+      "license": "OFL-1.1",
+      "license_sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb",
+      "modified": false
+    },
+    {
+      "filename": "NotoSansArabic-Regular.ttf",
+      "repo": "notofonts/arabic",
+      "commit": "1b2b7e5c6ce3ab4d50681c854892325530084c35",
+      "url": "https://github.com/notofonts/arabic/releases/download/NotoSansArabic-v2.013/NotoSansArabic-v2.013.zip",
+      "archive_sha256": "1301aceaea84c501cf2e6dcfb3182e2328c8eae5725817fcb239672bda7154f1",
+      "tag": "NotoSansArabic-v2.013",
+      "license_url": "https://raw.githubusercontent.com/notofonts/arabic/1b2b7e5c6ce3ab4d50681c854892325530084c35/OFL.txt",
+      "license_file": "NotoSansArabic-OFL.txt",
+      "archive_member": "NotoSansArabic/full/ttf/NotoSansArabic-Regular.ttf",
+      "archive_regular_member_candidates": [
+        "NotoSansArabic/full/ttf/NotoSansArabic-Regular.ttf",
+        "NotoSansArabic/hinted/ttf/NotoSansArabic-Regular.ttf",
+        "NotoSansArabic/unhinted/ttf/NotoSansArabic-Regular.ttf"
+      ],
+      "family": "Noto Sans Arabic",
+      "font_names": {
+        "0": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)",
+        "1": "Noto Sans Arabic",
+        "2": "Regular",
+        "4": "Noto Sans Arabic Regular",
+        "5": "Version 2.013; ttfautohint (v1.8.4.16-eb64)",
+        "6": "NotoSansArabic-Regular",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org",
+        "16": ""
+      },
+      "bytes": 271652,
+      "sha256": "7ed3fe069312aceac454f17cf613a30f95271d6ed7ce58005ed4d016bd3823d7",
+      "license": "OFL-1.1",
+      "license_sha256": "a7a5a25eb188bf1cd96982030d53e23c33485c69b1044a562254226857ee13af",
+      "modified": false
+    },
+    {
+      "filename": "NotoSansDevanagari-Regular.ttf",
+      "repo": "notofonts/devanagari",
+      "commit": "e123d230c160ebe949d731cc19017cdb354180d1",
+      "url": "https://github.com/notofonts/devanagari/releases/download/NotoSansDevanagari-v2.007/NotoSansDevanagari-v2.007.zip",
+      "archive_sha256": "820c7da45b1e63562cb41c0a8cac5d9a4202312043a3a040ed1325857ef469b1",
+      "tag": "NotoSansDevanagari-v2.007",
+      "license_url": "https://raw.githubusercontent.com/notofonts/devanagari/e123d230c160ebe949d731cc19017cdb354180d1/OFL.txt",
+      "license_file": "NotoSansDevanagari-OFL.txt",
+      "archive_member": "NotoSansDevanagari/full/ttf/NotoSansDevanagari-Regular.ttf",
+      "archive_regular_member_candidates": [
+        "NotoSansDevanagari/full/ttf/NotoSansDevanagari-Regular.ttf",
+        "NotoSansDevanagari/hinted/ttf/NotoSansDevanagari-Regular.ttf",
+        "NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf"
+      ],
+      "family": "Noto Sans Devanagari",
+      "font_names": {
+        "0": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/devanagari)",
+        "1": "Noto Sans Devanagari",
+        "2": "Regular",
+        "4": "Noto Sans Devanagari Regular",
+        "5": "Version 2.007; ttfautohint (v1.8.4.16-eb64)",
+        "6": "NotoSansDevanagari-Regular",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL",
+        "16": ""
+      },
+      "bytes": 277680,
+      "sha256": "573e525d9f4923d34645fe752475419f45f8dec5a8e43f3e83c5c5f43d1f2ff9",
+      "license": "OFL-1.1",
+      "license_sha256": "a216f6f8d85c7228093e0ee5e258d9d377e6671f68acb4db1930b29583d0f331",
+      "modified": false
+    },
+    {
+      "filename": "NotoSansThai-Regular.ttf",
+      "repo": "notofonts/thai",
+      "commit": "f8b482c158650260bba5d5edba9da3e8bb7185b4",
+      "url": "https://github.com/notofonts/thai/releases/download/NotoSansThai-v2.002/NotoSansThai-v2.002.zip",
+      "tag": "NotoSansThai-v2.002",
+      "license_url": "https://raw.githubusercontent.com/notofonts/thai/f8b482c158650260bba5d5edba9da3e8bb7185b4/OFL.txt",
+      "license_file": "NotoSansThai-OFL.txt",
+      "archive_sha256": "af889cc673fc714060ce5e4e088fbad32aa4c0571a19958efeaff128a22da485",
+      "archive_member": "NotoSansThai/full/ttf/NotoSansThai-Regular.ttf",
+      "archive_regular_member_candidates": [
+        "NotoSansThai/full/ttf/NotoSansThai-Regular.ttf",
+        "NotoSansThai/hinted/ttf/NotoSansThai-Regular.ttf",
+        "NotoSansThai/googlefonts/ttf/NotoSansThai-Regular.ttf",
+        "NotoSansThai/unhinted/ttf/NotoSansThai-Regular.ttf"
+      ],
+      "family": "Noto Sans Thai",
+      "font_names": {
+        "0": "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)",
+        "1": "Noto Sans Thai",
+        "2": "Regular",
+        "4": "Noto Sans Thai Regular",
+        "5": "Version 2.002; ttfautohint (v1.8.4.7-5d5b)",
+        "6": "NotoSansThai-Regular",
+        "13": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL",
+        "16": ""
+      },
+      "bytes": 72812,
+      "sha256": "2101faa471942570d506a394df7da555d15246c7814c7522c63d4fa85b0d8d88",
+      "license": "OFL-1.1",
+      "license_sha256": "2e98fd23a52d253db8612cd5942c8f2ff4111b21d2367050fdca91d8ccc374a0",
+      "modified": false
+    }
+  ],
+  "total_bytes": 17628716
+}

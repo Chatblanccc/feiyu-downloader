@@ -1,0 +1,20 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const ResEdit = require('resedit');
+module.exports = async function afterPack(context) {
+  if (context.electronPlatformName !== 'win32') return;
+  const filename = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.exe`);
+  const exe = ResEdit.NtExecutable.from(fs.readFileSync(filename), { ignoreCert: true });
+  const res = ResEdit.NtExecutableResource.from(exe);
+  const icon = ResEdit.Data.IconFile.from(fs.readFileSync(path.join(__dirname,'../assets/icon.ico')));
+  const groups = ResEdit.Resource.IconGroupEntry.fromEntries(res.entries);
+  const group = groups[0];
+  ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, group?.id || 1, group?.lang || 1033, icon.icons.map(x=>x.data));
+  const versions = ResEdit.Resource.VersionInfo.fromEntries(res.entries);
+  const version = versions[0] || ResEdit.Resource.VersionInfo.createEmpty();
+  const [major,minor,patch] = context.packager.appInfo.version.split('.').map(Number);
+  version.setFileVersion(major,minor,patch,0,1033); version.setProductVersion(major,minor,patch,0,1033);
+  version.setStringValues({lang:1033,codepage:1200},{FileDescription:'飞羽下载',ProductName:'飞羽下载',CompanyName:'Feiyu',OriginalFilename:path.basename(filename),InternalName:'FeiyuDownload',LegalCopyright:'Copyright © 2026 Feiyu'});
+  version.outputToResourceEntries(res.entries); res.outputResource(exe); fs.writeFileSync(filename,Buffer.from(exe.generate()));
+};

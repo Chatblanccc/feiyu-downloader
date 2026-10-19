@@ -1,0 +1,210 @@
+{
+  "platform": "win32-x64",
+  "sources": [
+    {
+      "archive": "yt-dlp.exe",
+      "url": "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe",
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+    },
+    {
+      "archive": "deno-x86_64-pc-windows-msvc.zip",
+      "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip",
+      "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+    },
+    {
+      "archive": "ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip",
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-lgpl-shared-9.0.zip",
+      "sha256": "11afb4cc03bd4c5ab123dfe396b31aa432bb227cfae0047a56ed632c17c59e0f"
+    },
+    {
+      "archive": "whisper-bin-x64.zip",
+      "url": "https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip",
+      "sha256": "6ba69e3482d7826214f90a6a9c84ca07782aec1e1d0c6a7c30c994fd5d816ccb"
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE.txt",
+      "bytes": 7651,
+      "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+    },
+    {
+      "path": "avcodec-63.dll",
+      "bytes": 91137024,
+      "sha256": "9de0b9aab1aabac017f6af55179a287cd06708dd3c29ab19a2e2b8c93464a213"
+    },
+    {
+      "path": "avdevice-63.dll",
+      "bytes": 4948480,
+      "sha256": "23c934febbd246235a3188f388464caf8cb6cd3752436fc4dff14f16b39616df"
+    },
+    {
+      "path": "avfilter-12.dll",
+      "bytes": 31540736,
+      "sha256": "43eb56cd0aa2a900e10e2ff2b341cfb9fe6339ef7374327562efe680fb95e0d8"
+    },
+    {
+      "path": "avformat-63.dll",
+      "bytes": 22770176,
+      "sha256": "0df0277eb9800bec426fb3b3e9f386d25ce398d2d8e328f028c7e658f5818b98"
+    },
+    {
+      "path": "avutil-61.dll",
+      "bytes": 3016704,
+      "sha256": "f8739cd18caadd31cf72e58aab576fe1f8c619145b6a1f2e439dcb8acf66638a"
+    },
+    {
+      "path": "deno.exe",
+      "bytes": 97462048,
+      "sha256": "e020f3e232bd16e33768dee528e5983349c962952051ced0a5d58ad42f5d9b33"
+    },
+    {
+      "path": "ffmpeg.exe",
+      "bytes": 540160,
+      "sha256": "b94dc81860335c7888463ca8e2bd8b963dc9ec250afc21839bfb11fd42133842"
+    },
+    {
+      "path": "ffprobe.exe",
+      "bytes": 229888,
+      "sha256": "a1ce91c680f3d1dc90620d5619179d46c5be46909567f29acfa3d6e5f8cc05fc"
+    },
+    {
+      "path": "fonts/NotoSans-Regular.ttf",
+      "bytes": 569208,
+      "sha256": "b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5"
+    },
+    {
+      "path": "fonts/NotoSansArabic-Regular.ttf",
+      "bytes": 271652,
+      "sha256": "7ed3fe069312aceac454f17cf613a30f95271d6ed7ce58005ed4d016bd3823d7"
+    },
+    {
+      "path": "fonts/NotoSansCJKsc-Regular.otf",
+      "bytes": 16437364,
+      "sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+    },
+    {
+      "path": "fonts/NotoSansDevanagari-Regular.ttf",
+      "bytes": 277680,
+      "sha256": "573e525d9f4923d34645fe752475419f45f8dec5a8e43f3e83c5c5f43d1f2ff9"
+    },
+    {
+      "path": "fonts/NotoSansThai-Regular.ttf",
+      "bytes": 72812,
+      "sha256": "2101faa471942570d506a394df7da555d15246c7814c7522c63d4fa85b0d8d88"
+    },
+    {
+      "path": "fonts/fonts-manifest.json",
+      "bytes": 8372,
+      "sha256": "dd3def19cb39a3de64258cdaef8964dc0109ad022eeafa4e89f10378efdd9721"
+    },
+    {
+      "path": "fonts/glyph-coverage.json",
+      "bytes": 6353,
+      "sha256": "9f7ea98cff951f86c891e0a2ef56c82e6989aefc7c791d19fefa28ae19b79388"
+    },
+    {
+      "path": "swresample-7.dll",
+      "bytes": 734720,
+      "sha256": "d1d2957e5d7273ba0fd6e61ec5add76c22b40f13af9f2df0ab7a6bd2681a941c"
+    },
+    {
+      "path": "swscale-10.dll",
+      "bytes": 2332160,
+      "sha256": "e8b1c508982d6a6b4fde4fbf00f72759b3e571e5a27d9856f6775075d3c7e586"
+    },
+    {
+      "path": "whisper/SDL2.dll",
+      "bytes": 2500096,
+      "sha256": "de23db1694a3c7a4a735e7ecd3d214b2023cc2267922c6c35d30c7fc7370d677"
+    },
+    {
+      "path": "whisper/ggml-base.dll",
+      "bytes": 693248,
+      "sha256": "bede0d6b2d387236ecd2b5dd676d51c8984b5b6e0ae461a12174e9c01345c5f0"
+    },
+    {
+      "path": "whisper/ggml-cpu-alderlake.dll",
+      "bytes": 1009664,
+      "sha256": "d8f5c56ea490394eeae8b271650f2647aecd039a542d6df9e0140726e62a4603"
+    },
+    {
+      "path": "whisper/ggml-cpu-cannonlake.dll",
+      "bytes": 1049600,
+      "sha256": "74127b40abd4f595d9db6af0fa313a02e18ff42fc228bfa05281e7c788dd4507"
+    },
+    {
+      "path": "whisper/ggml-cpu-cascadelake.dll",
+      "bytes": 1061376,
+      "sha256": "4b11c427b844eeac87529af9a8d94b35aad2024666beb2a35e59fe3077e4b81e"
+    },
+    {
+      "path": "whisper/ggml-cpu-haswell.dll",
+      "bytes": 1010688,
+      "sha256": "1306b1014c8118d27234d8ddc0e66ced1f8c8476bf85071595fd182ea9b7263b"
+    },
+    {
+      "path": "whisper/ggml-cpu-icelake.dll",
+      "bytes": 1061376,
+      "sha256": "2b4dc4c66e7d8fe2807283816e9cf3b7f7d0556f59df34069871e37eab8aed40"
+    },
+    {
+      "path": "whisper/ggml-cpu-sandybridge.dll",
+      "bytes": 1026560,
+      "sha256": "04edbdebc01a1d421062a960881a4f34d520d99693999518243f332406444c6e"
+    },
+    {
+      "path": "whisper/ggml-cpu-skylakex.dll",
+      "bytes": 1049600,
+      "sha256": "1774714cf93621406ff35344b54715619a83242ae3e331e44d98a3b35ce801be"
+    },
+    {
+      "path": "whisper/ggml-cpu-sse42.dll",
+      "bytes": 862720,
+      "sha256": "f060318772c4c2dbac312bbfff6ea700b85dbc502bb38585a7186d06d549301a"
+    },
+    {
+      "path": "whisper/ggml-cpu-x64.dll",
+      "bytes": 866816,
+      "sha256": "4b4b05caba40d4309b5d710ef74c59ba190516b8489f27bdb1ba11ae33c6e9d3"
+    },
+    {
+      "path": "whisper/ggml.dll",
+      "bytes": 62464,
+      "sha256": "31fe18616d872af9b6134b47a6dff8072ae4ecbe5df0273f4f8dc36766c9db8e"
+    },
+    {
+      "path": "whisper/llama.dll",
+      "bytes": 2755072,
+      "sha256": "74b7857b05951c0dff4c7baf796205433c84ee40c9bbb0bda3f182d4425ce339"
+    },
+    {
+      "path": "whisper/parakeet.dll",
+      "bytes": 582144,
+      "sha256": "abe7399d64a67b1ebcb8d33becd07c67cbf186cb0d2bab34a4264feefdc337c4"
+    },
+    {
+      "path": "whisper/whisper-cli.exe",
+      "bytes": 479744,
+      "sha256": "331dba46d6427105d2b802cdbc7eae916ea1c5abf9b0d3b5cfe460d8db8e4366"
+    },
+    {
+      "path": "whisper/whisper.dll",
+      "bytes": 1370112,
+      "sha256": "034396d75bb5720c1851674ff64a96192b58f6927b68d334ebd254ce6cad9674"
+    },
+    {
+      "path": "yt-dlp.exe",
+      "bytes": 17840399,
+      "sha256": "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a"
+    }
+  ],
+  "versions": {
+    "yt-dlp": "2026.08.19",
+    "Deno": "2.9.7",
+    "FFmpeg": "n9.0.2-28-g669f5ab083-20261018 (BtbN LGPL shared)",
+    "whisper.cpp": "b5454"
+  },
+  "ffmpegSourceCommit": "669f5ab083",
+  "noMicrosoftCRTRedistribution": true
+}
