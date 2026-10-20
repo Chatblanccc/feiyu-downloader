@@ -29,13 +29,35 @@ def digest(path, algorithm='sha256'):
     return hasher.digest()
 
 
-def release_version(mac_release, windows_package):
-    version = mac_release['version']
-    if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version):
+def release_version(mac_release, windows_package=None, *, mac_only=False):
+    version = mac_release.get('version')
+    if not isinstance(version, str) or not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version):
         raise ValueError('Stable release version must be X.Y.Z')
-    if windows_package['version'] != version:
+    if not mac_only and (windows_package is None or windows_package.get('version') != version):
         raise ValueError('Both platforms must share the release version')
     return version
+
+
+def safe_asset_name(name):
+    return (isinstance(name, str) and bool(name) and Path(name).name == name
+            and not name.startswith('.') and '\\' not in name
+            and not any(ord(character) < 32 or ord(character) == 127 for character in name))
+
+
+def validate_extra_assets(sources, reserved_names):
+    names = set(reserved_names)
+    for source in sources:
+        if not source.is_file() or source.is_symlink() or not safe_asset_name(source.name):
+            raise ValueError('Expected regular release asset with a safe file name: ' + str(source))
+        if source.name in names:
+            raise ValueError('Duplicate release asset name: ' + source.name)
+        names.add(source.name)
+
+
+def prepare_destination(destination):
+    if destination.is_symlink() or (destination.exists() and (not destination.is_dir() or any(destination.iterdir()))):
+        raise ValueError('Release output directory must be empty; use a new folder without signed assets')
+    destination.mkdir(parents=True, exist_ok=True)
 
 
 def validate_windows_metadata(metadata, directory, version):
@@ -59,14 +81,14 @@ def validate_windows_metadata(metadata, directory, version):
     return file
 
 
-def appcast(version, build, filename, length, signature, notes, minimum_os='13.0'):
+def appcast(version, build, filename, length, signature, notes, minimum_os='13.0', *, prerelease=False):
     if not re.fullmatch(r'[A-Za-z0-9+/]{86}==', signature):
         raise ValueError('Expected Ed25519 archive signature')
     tree = ET.Element('rss', version='2.0')
     channel = ET.SubElement(tree, 'channel')
     ET.SubElement(channel, 'title').text = '飞羽下载 macOS 更新'
     ET.SubElement(channel, 'link').text = f'https://github.com/{REPOSITORY}/releases'
-    ET.SubElement(channel, 'description').text = '用户主动检查的稳定版本更新'
+    ET.SubElement(channel, 'description').text = '用户主动检查的 macOS 测试版本更新' if prerelease else '用户主动检查的稳定版本更新'
     item = ET.SubElement(channel, 'item')
     ET.SubElement(item, 'title').text = f'飞羽下载 {version}'
     ET.SubElement(item, 'pubDate').text = format_datetime(datetime.now(timezone.utc))
@@ -84,25 +106,43 @@ def appcast(version, build, filename, length, signature, notes, minimum_os='13.0
     return ET.tostring(tree, encoding='utf-8', xml_declaration=True) + b'\n'
 
 
-def main():
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mac-app', type=Path, required=True)
-    parser.add_argument('--windows-dir', type=Path, required=True)
+    parser.add_argument('--windows-dir', type=Path)
+    parser.add_argument('--mac-only', action='store_true', help='Prepare a macOS-only prerelease without replacing Windows Latest')
     parser.add_argument('--sparkle-tools', type=Path, required=True, help='Sparkle distribution bin directory')
     parser.add_argument('--key-file', type=Path, default=Path.home() / 'Library/Application Support/FeiyuRelease/keys/macos-ed25519.seed')
     parser.add_argument('--notes', type=Path, required=True)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--third-party-source', type=Path, action='append', default=[], required=True, help='Corresponding upstream source archive; repeat for each bundled FFmpeg build')
-    args = parser.parse_args()
+    parser.add_argument('--extra-asset', type=Path, action='append', default=[], help='Accepted DMG, matching source ZIP or evidence; repeat for each file')
+    args = parser.parse_args(argv)
+    if not args.mac_only and args.windows_dir is None:
+        parser.error('--windows-dir is required unless --mac-only is set')
+    return args
+
+
+def main(argv=None):
+    args = parse_arguments(argv)
     dirty = subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=ROOT, text=True)
     if dirty.strip():
         raise ValueError('Commit all release source and metadata before preparing installers for publication')
     source_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     release = json.loads((ROOT / 'MacDownloader/Release.json').read_text())
-    package = json.loads((ROOT / 'WindowsDownloader/package.json').read_text())
-    version = release_version(release, package)
+    package = None if args.mac_only else json.loads((ROOT / 'WindowsDownloader/package.json').read_text())
+    version = release_version(release, package, mac_only=args.mac_only)
     destination = args.output or ROOT / 'outputs/releases' / ('v' + version)
-    destination.mkdir(parents=True, exist_ok=True)
+    reserved = {'appcast.xml', 'RELEASE_NOTES.md', 'SHA256SUMS.txt', 'release-assets.json',
+                f'FeiyuDownload-{version}-macOS-arm64.zip'}
+    if not args.mac_only:
+        reserved.update({'latest.yml', f'FeiyuDownload-{version}-Windows-x64-Setup.exe',
+                         f'FeiyuDownload-{version}-Windows-x64-Setup.exe.blockmap'})
+    validate_extra_assets([*args.third_party_source, *args.extra_asset], reserved)
+    for source in args.third_party_source:
+        if source.suffix not in {'.xz', '.gz', '.zip'}:
+            raise ValueError('Expected regular upstream source archive')
+    prepare_destination(destination)
     with (args.mac_app / 'Contents/Info.plist').open('rb') as stream:
         info = plistlib.load(stream)
     if info.get('CFBundleIdentifier') != 'io.feather.videodownloader' or info.get('CFBundleShortVersionString') != version or str(info.get('CFBundleVersion')) != str(release['build']):
@@ -112,13 +152,13 @@ def main():
     if info.get('SUVerifyUpdateBeforeExtraction') is not True or info.get('SURequireSignedFeed') is not True:
         raise ValueError('Built Mac app does not require signed updates/feed')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(args.mac_app)], check=True)
-    yaml_file = args.windows_dir / 'latest.yml'
-    js = "const fs=require('fs'),yaml=require('js-yaml');process.stdout.write(JSON.stringify(yaml.load(fs.readFileSync(process.argv[1],'utf8'))))"
-    metadata = json.loads(subprocess.check_output(['node', '-e', js, str(yaml_file.resolve())], cwd=ROOT / 'WindowsDownloader', text=True))
-    installer = validate_windows_metadata(metadata, args.windows_dir, version)
+    installer = yaml_file = None
+    if not args.mac_only:
+        yaml_file = args.windows_dir / 'latest.yml'
+        js = "const fs=require('fs'),yaml=require('js-yaml');process.stdout.write(JSON.stringify(yaml.load(fs.readFileSync(process.argv[1],'utf8'))))"
+        metadata = json.loads(subprocess.check_output(['node', '-e', js, str(yaml_file.resolve())], cwd=ROOT / 'WindowsDownloader', text=True))
+        installer = validate_windows_metadata(metadata, args.windows_dir, version)
     mac_zip = destination / f'FeiyuDownload-{version}-macOS-arm64.zip'
-    if mac_zip.exists():
-        raise ValueError('Output archive already exists; use a new empty output folder')
     subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(args.mac_app), str(mac_zip)], check=True)
     # Sparkle's current file format is a base64 encoded 32-byte Ed25519 seed.
     # Derive only its public key; never print or copy the private seed.
@@ -129,29 +169,29 @@ def main():
     signer = (args.sparkle_tools / 'sign_update').resolve()
     signature = subprocess.check_output([str(signer), '--ed-key-file', str(args.key_file), '-p', str(mac_zip)], text=True).strip()
     feed = destination / 'appcast.xml'
-    feed.write_bytes(appcast(version, release['build'], mac_zip.name, mac_zip.stat().st_size, signature, args.notes.read_text(), info.get('LSMinimumSystemVersion', '13.0')))
+    feed.write_bytes(appcast(version, release['build'], mac_zip.name, mac_zip.stat().st_size, signature,
+                            args.notes.read_text(), info.get('LSMinimumSystemVersion', '13.0'), prerelease=args.mac_only))
     subprocess.run([str(signer), '--ed-key-file', str(args.key_file), str(feed)], check=True)
     subprocess.run([str(signer), '--verify', '--ed-key-file', str(args.key_file), str(feed)], check=True)
     # Archive signature and signed feed must correspond to the same private key.
     subprocess.run([str(signer), '--verify', '--ed-key-file', str(args.key_file), str(mac_zip), signature], check=True)
     assets = [mac_zip, feed]
-    for source in args.third_party_source:
-        if not source.is_file() or source.is_symlink() or source.suffix not in {'.xz', '.gz', '.zip'}:
-            raise ValueError('Expected regular upstream source archive')
+    for source in [*args.third_party_source, *args.extra_asset]:
         target = destination / source.name
         if target.exists():
             raise ValueError('Duplicate release asset name: ' + target.name)
         shutil.copy2(source, target)
         assets.append(target)
-    for source in (installer, yaml_file):
-        target = destination / source.name
-        shutil.copy2(source, target)
-        assets.append(target)
-    blockmap = installer.with_suffix(installer.suffix + '.blockmap')
-    if blockmap.is_file():
-        target = destination / blockmap.name
-        shutil.copy2(blockmap, target)
-        assets.append(target)
+    if not args.mac_only:
+        for source in (installer, yaml_file):
+            target = destination / source.name
+            shutil.copy2(source, target)
+            assets.append(target)
+        blockmap = installer.with_suffix(installer.suffix + '.blockmap')
+        if blockmap.is_file():
+            target = destination / blockmap.name
+            shutil.copy2(blockmap, target)
+            assets.append(target)
     notes = destination / 'RELEASE_NOTES.md'
     shutil.copy2(args.notes, notes)
     assets.append(notes)
@@ -160,9 +200,12 @@ def main():
     assets.append(sums)
     manifest = {'version': version, 'tag': 'v' + version, 'repository': REPOSITORY,
                 'sourceCommit': source_commit,
+                'platforms': ['macos'] if args.mac_only else ['macos', 'windows'],
+                'prerelease': args.mac_only, 'makeLatest': not args.mac_only,
                 'assets': [file.name for file in assets],
-                'signing': {'macArchiveAndFeed': 'Ed25519', 'macDeveloperID': bool(info.get('FeiyuDeveloperIDSigned', False)),
-                            'windowsAuthenticode': 'not established by this script; verify separately'}}
+                'signing': {'macArchiveAndFeed': 'Ed25519', 'macDeveloperID': bool(info.get('FeiyuDeveloperIDSigned', False))}}
+    if not args.mac_only:
+        manifest['signing']['windowsAuthenticode'] = 'not established by this script; verify separately'
     (destination / 'release-assets.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
     print(f'Ready: {destination} ({len(assets)} assets). No upload or publication performed.')
 

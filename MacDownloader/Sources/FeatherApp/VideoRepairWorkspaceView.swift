@@ -70,14 +70,24 @@ struct VideoRepairWorkspaceView: View {
             .padding(12)
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
 
+            VStack(alignment: .leading, spacing: 7) {
+                Picker("增强规格", selection: $model.outputSize) {
+                    ForEach(VideoRepairOutputSize.allCases, id: \.self) { size in
+                        Text(size.title).tag(size)
+                    }
+                }.pickerStyle(.segmented).disabled(model.isBusy)
+                Text(model.outputSize.detail)
+                    .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $model.enhance) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("画质增强").font(.system(size: 13, weight: .medium))
-                        Text("使用 AI 改善低清、模糊与压缩噪点，保持原视频尺寸。")
+                        Text(model.outputSize == .fullHD ? "AI 精细增强（已开启）" : "画质增强").font(.system(size: 13, weight: .medium))
+                        Text(model.outputSize == .fullHD ? "AI 生成更高分辨率画面，保留原片比例和方向。" : "使用 AI 改善低清、模糊与压缩噪点，保持原视频尺寸。")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
-                }.toggleStyle(.switch)
+                }.toggleStyle(.switch).disabled(model.outputSize == .fullHD)
                 Divider().opacity(0.6)
                 Toggle(isOn: $model.repairMosaic) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -87,6 +97,23 @@ struct VideoRepairWorkspaceView: View {
                     }
                 }.toggleStyle(.switch)
             }.disabled(model.isBusy)
+
+            if model.outputSize == .source {
+                VStack(alignment: .leading, spacing: 7) {
+                    Picker("处理模式", selection: $model.performance) {
+                        ForEach(VideoRepairPerformance.allCases, id: \.self) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }.pickerStyle(.segmented).disabled(model.isBusy)
+                    Text(model.performance.detail)
+                        .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                Text(model.performance == .quiet
+                     ? "1080P 精细增强 · 低负载：减少 CPU 线程并安排短暂休息，整片处理时间会更久。"
+                     : "1080P 精细增强 · 画质优先：逐帧运行 AI 超分辨率，计算量高于原尺寸轻度增强。")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
 
             Text("马赛克遮挡的细节由 AI 推测，无法保证真实还原。建议对照原视频检查结果。")
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -128,7 +155,7 @@ struct VideoRepairWorkspaceView: View {
                         .disabled(item.state == .cancelling)
                 }
             }
-            Text(item.request.input.lastPathComponent).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(item.request.input.lastPathComponent + " · " + modeDescription(item.request)).font(.system(size: 11)).foregroundStyle(.secondary)
                 .lineLimit(1).truncationMode(.middle)
             if item.state.active {
                 Group {
@@ -168,15 +195,22 @@ struct VideoRepairWorkspaceView: View {
     }
 
     private func modeDescription(_ request: VideoRepairRequest) -> String {
-        if request.enhance && request.repairMosaic { return "画质增强 + 局部修复" }
-        return request.enhance ? "画质增强" : "局部修复"
+        let features = request.enhance && request.repairMosaic ? "画质增强 + 局部修复" : request.enhance ? "画质增强" : "局部修复"
+        if request.outputSize == .fullHD {
+            return features + " · " + request.outputSize.title + (request.performance == .quiet ? " · 低负载" : " · 画质优先")
+        }
+        return features + " · " + request.outputSize.title + " · " + request.performance.title
     }
 
     private func resultButtons(_ result: VideoRepairExportResult) -> some View {
-        HStack(spacing: 14) {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("\(result.inputInfo.width)×\(result.inputInfo.height) → \(result.outputInfo.width)×\(result.outputInfo.height)")
+                .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
+            HStack(spacing: 14) {
             Button("在 Finder 中显示") { DispatchQueue.main.async { model.reveal(result) } }
             Button("播放视频") { DispatchQueue.main.async { model.openVideo(result) } }
             Button("查看处理报告") { DispatchQueue.main.async { model.openReport(result) } }
-        }.font(.system(size: 11)).buttonStyle(.borderless)
+            }.font(.system(size: 11)).buttonStyle(.borderless)
+        }
     }
 }

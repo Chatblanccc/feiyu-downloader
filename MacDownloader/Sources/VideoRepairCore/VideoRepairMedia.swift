@@ -2,6 +2,21 @@ import AVFoundation
 import Foundation
 
 public enum VideoRepairMedia {
+    /// Uses display-oriented dimensions and the same even-pixel rounding as the worker.
+    /// Already larger sources are preserved rather than silently reduced to 1080P.
+    public static func outputDimensions(width: Int, height: Int, outputSize: VideoRepairOutputSize) -> (width: Int, height: Int) {
+        guard outputSize == .fullHD, width > 0, height > 0 else { return (width, height) }
+        let bounds = width >= height ? (width: 1920, height: 1080) : (width: 1080, height: 1920)
+        guard width < bounds.width, height < bounds.height else { return (width, height) }
+        // Integer ratios avoid losing two pixels when a mathematically exact
+        // boundary becomes 1919.9999999999998 in floating-point arithmetic.
+        let widthLimits = bounds.width * height <= bounds.height * width
+        let numerator = widthLimits ? bounds.width : bounds.height
+        let denominator = widthLimits ? width : height
+        return (max(2, (width * numerator / (2 * denominator)) * 2),
+                max(2, (height * numerator / (2 * denominator)) * 2))
+    }
+
     public static func inspect(_ url: URL) async throws -> VideoRepairMediaInfo {
         guard url.isFileURL,
               let values = try? FileManager.default.attributesOfItem(atPath: url.path),
@@ -56,9 +71,11 @@ public enum VideoRepairMedia {
     }
 
     /// Reject a truncated export, an orientation/size mistake, or lost audio before commit.
-    public static func validateOutput(_ output: VideoRepairMediaInfo, against input: VideoRepairMediaInfo) throws {
+    public static func validateOutput(_ output: VideoRepairMediaInfo, against input: VideoRepairMediaInfo,
+                                      outputSize: VideoRepairOutputSize = .source) throws {
         let tolerance = max(0.15, 2 / max(1, input.frameRate))
-        guard output.width == input.width, output.height == input.height,
+        let expected = outputDimensions(width: input.width, height: input.height, outputSize: outputSize)
+        guard output.width == expected.width, output.height == expected.height,
               abs(output.duration - input.duration) <= tolerance,
               abs(output.videoDuration - input.videoDuration) <= tolerance,
               abs(Double(output.videoFrameCount) - (input.videoDuration * output.frameRate).rounded()) <= 2,

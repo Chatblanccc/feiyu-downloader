@@ -26,6 +26,10 @@ LAMA_MD5 = 'e3aa4aaa15225a33ec84f9f4bc47e500'
 LAMA_SHA256 = '344c77bbcb158f17dd143070d1e789f38a66c04202311ae3a258ef66667a9ea9'
 SRVGG_URL = 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth'
 SRVGG_SHA256 = '8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292'
+RRDB_MODELS = {
+    'RealESRGAN_x2plus.pth': ('https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth', '49fafd45f8fd7aa8d31ab2a22d14d91b536c34494a5cfe31eb5d89c2fa266abb'),
+    'RealESRGAN_x4plus.pth': ('https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth', '4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1'),
+}
 SRVGG_ARCH_SOURCE = 'https://github.com/xinntao/Real-ESRGAN/blob/master/realesrgan/archs/srvgg_arch.py'
 
 def run(*args, **kwargs):
@@ -88,9 +92,19 @@ def ensure_srvgg():
         shutil.copy2(cached,target)
     download(SRVGG_URL,target,SRVGG_SHA256)
 
+def ensure_rrdb():
+    for name,(url,expected) in RRDB_MODELS.items():
+        target=RUNTIME/'models'/name
+        cached=SPIKE/'rrdb-x2-quality'/name
+        if cached.is_file() and digest(cached)==expected and not target.exists():
+            shutil.copy2(cached,target)
+        download(url,target,expected)
+
+
 def assemble():
     ensure_srvgg()
-    for name in ['worker.py','detector.py','srvgg_arch.py','requirements.txt','README.md']:
+    ensure_rrdb()
+    for name in ['worker.py','detector.py','srvgg_arch.py','rrdb_arch.py','super_resolution.py','requirements.txt','README.md']:
         shutil.copy2(SOURCE/name,RUNTIME/name)
     licenses=RUNTIME/'licenses'
     licenses.mkdir(exist_ok=True)
@@ -98,6 +112,7 @@ def assemble():
         ('LaMa-Apache-2.0.txt','https://raw.githubusercontent.com/advimman/lama/main/LICENSE'),
         ('IOPaint-Apache-2.0.txt','https://raw.githubusercontent.com/Sanster/IOPaint/main/LICENSE'),
         ('Real-ESRGAN-BSD-3-Clause.txt','https://raw.githubusercontent.com/xinntao/Real-ESRGAN/master/LICENSE'),
+        ('BasicSR-Apache-2.0.txt','https://raw.githubusercontent.com/XPixelGroup/BasicSR/master/LICENSE.txt'),
     ]:
         target=licenses/name
         if not target.exists():
@@ -106,6 +121,8 @@ def assemble():
     if (RUNTIME/'realesrgan').exists():
         shutil.rmtree(RUNTIME/'realesrgan')
     (licenses/'Real-ESRGAN-NCNN-MIT.txt').unlink(missing_ok=True)
+    basicsr_cached=SPIKE/'rrdb-x2-quality'/'BasicSR-LICENSE.txt'
+    if basicsr_cached.is_file(): shutil.copy2(basicsr_cached,licenses/'BasicSR-Apache-2.0.txt')
     shutil.copy2(RUNTIME/'python'/'lib'/'python3.11'/'LICENSE.txt',licenses/'Python-LICENSE.txt')
     (licenses/'THIRD-PARTY-NOTICES.txt').write_text(
         'Feather video repair runtime\n\n'
@@ -114,14 +131,20 @@ def assemble():
         'IOPaint: https://github.com/Sanster/IOPaint (Apache-2.0), inference interface reference.\n'
         'Real-ESRGAN: https://github.com/xinntao/Real-ESRGAN (BSD-3-Clause).\n'
         'Official SRVGGNetCompact architecture and general-x4v3 weights use BSD-3-Clause.\n'
-        'Architecture adaptation removes only the BasicSR registry import/decorator.\n'
+        'RRDB RealESRGAN_x2plus/x4plus weights use BSD-3-Clause; BasicSR RRDB architecture\n'
+        'uses Apache-2.0. Source: https://github.com/XPixelGroup/BasicSR .\n'
+        'RRDB adaptation removes registry/training initialization plumbing only; all\n'
+        'parameters strictly load from the pinned official evaluation checkpoints.\n'
+        'SRVGG adaptation removes only the BasicSR registry import/decorator.\n'
         'Python standalone: https://github.com/astral-sh/python-build-standalone .\n'
         'PyTorch, NumPy, OpenCV and Python dependency licenses are retained in\n'
         'python/lib/python3.11/site-packages/*-info and package license folders.\n\n'
         'Feather adaptation: automatic local pixel-grid detection, bounded streaming\n'
         'video pipeline, original-colour-constrained inpainting, NDJSON progress and\n'
         'cancellation. The model weights are unmodified. SRVGG is resident on MPS,\n'
-        'with complete-tile CPU retry on MPS failure, tile256 and 34-pixel context.\n'
+        'with FP16, complete-tile FP32 CPU retry, tile512 and 34-pixel context.\n'
+        'Ordered CPU/GPU streaming uses a bounded four-frame preparation queue.\n'
+        'Fast/quiet modes fuse a bounded-resolution enhancement residual into source.\n'
         'The detector and wrapper are newly authored; no DeepMosaics code or model\n'
         'is bundled. AI output is a conjectured reconstruction, not original detail.\n')
     # Keep source and licenses, but avoid shipping build caches and bytecode.
@@ -139,6 +162,7 @@ def assemble():
         'engines':[
             {'name':'LaMa','version':'big-lama TorchScript','source':LAMA_URL,'license':'Apache-2.0','md5':LAMA_MD5},
             {'name':'Real-ESRGAN general x4v3','version':'0.2.5.0','source':SRVGG_URL,'sha256':SRVGG_SHA256,'architectureSource':SRVGG_ARCH_SOURCE,'license':'BSD-3-Clause'},
+            *[{'name':name.removesuffix('.pth'),'source':url,'sha256':sha,'license':'BSD-3-Clause','architecture':'BasicSR RRDBNet / Apache-2.0'} for name,(url,sha) in RRDB_MODELS.items()],
             {'name':'Python standalone','version':'3.11.10+20241016','source':PYTHON_URL,'license':'PSF and bundled dependencies'},
         ],'files':files}
     (RUNTIME/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')

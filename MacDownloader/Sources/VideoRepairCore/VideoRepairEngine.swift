@@ -84,6 +84,8 @@ private struct RepairReport: Encodable {
     let wholeVideo = true
     let enhance: Bool
     let repairMosaic: Bool
+    let performance: VideoRepairPerformance
+    let outputSize: VideoRepairOutputSize
     let input: VideoRepairMediaInfo
     let output: VideoRepairMediaInfo
     let framesProcessed: Int?
@@ -103,6 +105,9 @@ public struct VideoRepairEngine: Sendable {
     public func run(_ request: VideoRepairRequest, receiptURL: URL,
                     onProgress: @escaping @Sendable (VideoRepairWorkerEvent) -> Void = { _ in }) async throws -> VideoRepairExportResult {
         try Task.checkCancellation()
+        guard request.outputSize != .fullHD || request.enhance else {
+            throw VideoRepairError.operation("1080P 精细增强需要开启画质增强，请开启后重试。")
+        }
         guard request.enhance || request.repairMosaic else { throw VideoRepairError.operation("请至少开启一种 AI 修复方式。") }
         guard request.input.isFileURL, request.destination.isFileURL, receiptURL.isFileURL else { throw VideoRepairError.invalidMedia }
         try runtime.validate()
@@ -141,16 +146,19 @@ public struct VideoRepairEngine: Sendable {
             "OMP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "2", "VECLIB_MAXIMUM_THREADS": "2"
         ]) { _, fixed in fixed }
         let result: ProcessResult
+        let memoryBudget = min(ProcessInfo.processInfo.physicalMemory / 4, 6 * 1_024 * 1_024 * 1_024)
         do {
             result = try await runner.run(ProcessCommand(executable: runtime.python, arguments: [runtime.worker.path,
             "repair", "--input", source.path, "--output", output.path,
             "--report", workerReport.path,
             "--ffmpeg", runtime.ffmpeg.path, "--ffprobe", runtime.ffprobe.path,
-            "--enhance", request.enhance ? "true" : "false", "--repair-mosaic", request.repairMosaic ? "true" : "false"],
+            "--enhance", request.enhance ? "true" : "false", "--repair-mosaic", request.repairMosaic ? "true" : "false",
+            "--performance", request.performance.rawValue, "--output-size", request.outputSize.rawValue,
+            "--memory-budget", String(memoryBudget)],
             environment: environment, timeout: 7 * 24 * 60 * 60,
             maximumOutputBytes: 64 * 1_024 * 1_024, maximumStandardErrorBytes: 512 * 1_024,
             maximumLineBytes: 16 * 1_024, captureStandardOutput: false,
-            maximumMemoryBytes: min(ProcessInfo.processInfo.physicalMemory / 4, 6 * 1_024 * 1_024 * 1_024))) { relay.consume($0) }
+            maximumMemoryBytes: memoryBudget)) { relay.consume($0) }
         } catch DownloadError.memoryLimitExceeded {
             throw VideoRepairError.operation("AI 修复占用内存超过本机预算，已停止并释放资源。请关闭其他占用内存的应用后重试。")
         } catch DownloadError.timedOut {
@@ -175,7 +183,7 @@ public struct VideoRepairEngine: Sendable {
               completion.regionsRepaired.map({ $0 >= 0 }) ?? true else { throw VideoRepairError.invalidWorkerOutput }
         relay.emit(.init(stage: "validating", fraction: 0.96, detail: "正在校验完整时长、画面尺寸和全部音轨…"))
         let repaired = try await VideoRepairMedia.inspect(output)
-        try VideoRepairMedia.validateOutput(repaired, against: info)
+        try VideoRepairMedia.validateOutput(repaired, against: info, outputSize: request.outputSize)
         guard completion.framesProcessed.map({ abs($0 - repaired.videoFrameCount) <= 1 }) == true else {
             throw VideoRepairError.invalidWorkerOutput
         }
@@ -183,7 +191,8 @@ public struct VideoRepairEngine: Sendable {
         guard request.input.resolvingSymlinksInPath().standardizedFileURL == source,
               try SourceFingerprint(source) == original else { throw VideoRepairError.sourceChanged }
         let verifiedReport = RepairReport(completedAt: Date(), inputFileName: request.input.lastPathComponent,
-            enhance: request.enhance, repairMosaic: request.repairMosaic, input: info, output: repaired,
+            enhance: request.enhance, repairMosaic: request.repairMosaic, performance: request.performance,
+            outputSize: request.outputSize, input: info, output: repaired,
             framesProcessed: completion.framesProcessed, framesTotal: completion.framesTotal,
             perFrameRegionRepairs: completion.regionsRepaired, limitations: [
                 "整片自动检测网格状马赛克，使用 LaMa 重建局部画面；自动检测可能漏检或误检。",

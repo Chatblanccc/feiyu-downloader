@@ -6,7 +6,7 @@
 
 | 版本 | 技术 | 系统要求 | 说明 |
 | --- | --- | --- | --- |
-| [macOS 0.5.0](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载和 AI 修复 macOS 13+，字幕 macOS 26+ | 本地整片画质增强与局部 AI 修复；HLS/DASH 8 分片并发 |
+| [macOS 0.5.2](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载和 AI 修复 macOS 13+，字幕 macOS 26+ | 本地整片画质增强与局部 AI 修复；HLS/DASH 8 分片并发 |
 | [Windows 0.4.1](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
 | [Android 0.1.0-alpha02](AndroidDownloader/README.md) | Kotlin / Jetpack Compose | Android 10+，ARM64 | 下载功能内测版，验收状态见模块报告 |
 
@@ -19,9 +19,17 @@
 
 各网站能否下载取决于内容权限、网站变化和网络环境，不保证所有链接可用。请仅下载自己拥有或已获得许可的内容，并遵守网站条款。
 
+## 安装包
+
+- [macOS 0.5.2 · Apple Silicon 测试版](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/v0.5.2)：1080P 精细增强与修复提速。
+- [Windows 0.4.1 · x64](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/v0.4.1)。
+- [Android 0.1.0-alpha02 · ARM64 内测版](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/android-v0.1.0-alpha02)。
+
+各平台仅保留最新已验收安装包，历史源码提交保留。Mac 版本说明与实测边界见 [0.5.2 发布说明](docs/releases/0.5.2.md)。
+
 ## 检查更新
 
-0.4.0 新增用户主动检查 GitHub Releases 更新，确认下载后重启覆盖升级，保留原数据。Mac 使用 Sparkle 签名更新；Windows 使用 electron-updater / NSIS。发布流程和签名边界见 [更新说明](docs/UPDATES.md)。当前更新包处于发布候选阶段，正式 Release 上线后客户端才会获得更新。
+0.4.0 新增用户主动检查 GitHub Releases 更新，确认下载后重启覆盖升级，保留原数据。Mac 使用 Sparkle 签名更新；Windows 使用 electron-updater / NSIS。发布流程和签名边界见 [更新说明](docs/UPDATES.md)。Mac 的签名更新源独立指向当前 Mac 版本；GitHub 的稳定版 Latest 保留给 Windows，Mac 测试版不会改变 Windows 更新入口。
 
 ## 从源码构建
 
@@ -30,9 +38,12 @@
 ```sh
 python3 MacDownloader/scripts/fetch-tools.py
 python3 MacDownloader/scripts/build-ffmpeg.py
+python3 MacDownloader/scripts/fetch-video-repair.py
 python3 MacDownloader/scripts/build-app.py
 python3 MacDownloader/scripts/package-dmg.py
 ```
+
+`build-app.py` 生成 `outputs/飞羽下载.app`；生成 DMG 前还需完成对应版本的核心、视频修复和界面验收，打包脚本会检查验收记录。
 
 macOS 构建需要 Apple Silicon Mac、Xcode Command Line Tools 和 Python 3；字幕开发需要提供相关系统框架的 macOS 26 SDK。
 
@@ -58,6 +69,6 @@ Windows 0.3.2 已有 Windows 实机下载验证；0.4.0 更新功能的 Windows 
 
 ## 许可
 
-macOS、Windows 原创代码采用 [MIT License](LICENSE)；Android 模块采用 [GPL-3.0](AndroidDownloader/LICENSE)。第三方工具、运行时、字体和模型遵循各自许可；项目许可不替代这些许可。来源与声明见 [Android 第三方说明](AndroidDownloader/docs/THIRD_PARTY.md)、[Windows 第三方说明](WindowsDownloader/docs/third-party/组件来源.md)、[字体许可](WindowsDownloader/docs/fonts-notices/README.md)和各平台依赖获取脚本。
+macOS、Windows 原创代码采用 [MIT License](LICENSE)；Android 模块采用 [GPL-3.0](AndroidDownloader/LICENSE)。第三方工具、运行时、字体和模型遵循各自许可；项目许可不替代这些许可。来源与声明见 [AI 修复第三方许可](THIRD_PARTY_NOTICES.md)、[Android 第三方说明](AndroidDownloader/docs/THIRD_PARTY.md)、[Windows 第三方说明](WindowsDownloader/docs/third-party/组件来源.md)、[字体许可](WindowsDownloader/docs/fonts-notices/README.md)和各平台依赖获取脚本。
 
 欢迎通过 Issues 报告问题，或提交 Pull Request。报告问题时请注明系统版本、软件版本、复现步骤及已去除个人信息的错误提示；请勿提交 Cookie、账号凭据或私人媒体。
