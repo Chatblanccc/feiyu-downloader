@@ -4,18 +4,32 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
   <channel>
     <title>飞羽下载 macOS 更新</title>
     <link>https://github.com/Chatblanccc/feiyu-downloader/releases</link>
-    <description>用户主动检查的稳定版本更新</description>
+    <description>用户主动检查的 macOS 测试版本更新</description>
     <item>
-      <title>飞羽下载 0.5.0</title>
-      <pubDate>Mon, 19 Oct 2026 14:40:36 +0000</pubDate>
-      <sparkle:version>12</sparkle:version>
-      <sparkle:shortVersionString>0.5.0</sparkle:shortVersionString>
+      <title>飞羽下载 0.5.2</title>
+      <pubDate>Tue, 20 Oct 2026 01:11:31 +0000</pubDate>
+      <sparkle:version>14</sparkle:version>
+      <sparkle:shortVersionString>0.5.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <description>新增本地 AI 视频修复、整片画质增强和实验性局部修复；HLS/DASH 使用 8 个分片并发。此为测试版，AI 补画不能保证真实还原。保留现有下载记录。</description>
-      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.5.0/FeiyuDownload-0.5.0-macOS-arm64.zip" length="438302385" type="application/octet-stream" sparkle:edSignature="b89vLklgw3ftkHD4ZmuxWT3k6aKLSw0psgMw2IHfXj1q6blfy41QdRq5dTpOxgZBp1VTGojEPP9Leo825ZlFAA==" sparkle:os="macos"></enclosure>
+      <description># 飞羽下载 macOS 0.5.2（build 14）
+
+本次为 Apple Silicon macOS 测试版，包含此前 0.5.1 的视频修复提速与新的 1080P 精细增强。Windows 仍为 0.4.1，Android 仍为 0.1.0-alpha02；本次不改变它们的版本或更新入口。
+
+- 新增独立“1080P 精细增强”：使用 Real-ESRGAN RRDB x2plus/x4plus，保留 AI 放大后的像素。按横竖方向和原比例放大至 1920×1080 或 1080×1920 范围，非标准比例不拉伸，已有更高分辨率不缩小。完成后显示输入、输出尺寸。
+- 原尺寸默认快速模式仍可使用。规则网格检测改为向量化，CPU 局部修复、GPU 增强和编码通过有界队列并行；根据内存预算限制并发，支持低负载模式。
+- 使用 Mac GPU 的 FP16 推理；GPU 失败时重试完整分块并回退 CPU FP32。增加分块上下文、x2 像素相位对齐和几何校验，保持旧任务及完成凭据兼容。
+- 进度显示实际导出帧数、处理速度和预计剩余时间。处理可取消，导出独立 MP4，保留声音和原文件。
+
+验证包括 40 项下载核心回归、12 项视频修复核心测试、14 项模型测试，以及实际应用的公开视频导出、旋转方向、取消、播放和重开恢复。公开视频实测 480×270 → 1920×1080，150 帧及声音完整，耗时约 198.5 秒（5 秒素材）。强模型改善部分压缩块与边缘，但计算量明显增加；该结果不能代表长片速度、风扇噪声或所有视频的效果。
+
+1080P 是输出尺寸，不保证恢复原生高清细节。AI 补画与纹理可能不准确或闪烁，自动识别可能漏检、误检，HDR 会转为 SDR。安装包仍为本地 ad-hoc 签名，尚未经过 Apple Developer ID 签名与公证。
+
+提供 DMG、Sparkle 签名更新归档、对应源码、FFmpeg 对应源码和 SHA-256 清单。用户视频、历史记录、Cookie、私钥及本机测试日志不作为发布资产上传。覆盖安装保留原有应用标识和数据位置。
+</description>
+      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.5.2/FeiyuDownload-0.5.2-macOS-arm64.zip" length="562761610" type="application/octet-stream" sparkle:edSignature="o6+MX9UdpH+s7yNowST6RbD/pva2lglwFAF0l3CmqD/udGbLgQe9AYx3Hxy5oL4Z6n2D1oO/rptCgHk8h3T4AQ==" sparkle:os="macos"></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: R86lyW4A11HomXsb4ETYu8WjFa8IRPFrdMDijDKL5F5Kv7rDEiHgtgr+zM3moqp+FDfrqEL49EJyuh+kFyIaDg==
-length: 1458
+edSignature: uHh/329sHuTJLT2CgY7nE+eo2W0PSQwX7Lsj4RI4iTNyjUphm39VEoZ6slrYT5AuFxGZih6nnW1kCQJRi0RuBQ==
+length: 3283
 -->
