@@ -48,36 +48,49 @@ class MosaicDetector:
         # A derivative profile across an actual mosaic has regularly spaced spikes.
         dx = np.abs(np.diff(gray, axis=1))
         dy = np.abs(np.diff(gray, axis=0))
-        for y in range(0, sh - win + 1, stride):
-            for x in range(0, sw - win + 1, stride):
-                px = dx[y:y+win, x:x+win-1]
-                py = dy[y:y+win-1, x:x+win]
-                flat = (np.mean(px < 3.5) + np.mean(py < 3.5)) * .5
-                if flat < .77 or np.std(gray[y:y+win, x:x+win]) < 9:
-                    continue
-                ex, ey = np.mean(px, axis=0), np.mean(py, axis=1)
-                if min(float(ex.max()), float(ey.max())) < 10:
-                    continue
-                ex = ex - np.mean(ex)
-                ey = ey - np.mean(ey)
-                best, period = 0.0, 0
-                for p in range(4, 13):
-                    ax, bx = ex[:-p], ex[p:]
-                    ay, by = ey[:-p], ey[p:]
-                    cx = float(np.dot(ax, bx) / (np.sqrt(np.dot(ax, ax) * np.dot(bx, bx)) + 1e-6))
-                    cy = float(np.dot(ay, by) / (np.sqrt(np.dot(ay, ay) * np.dot(by, by)) + 1e-6))
-                    score = min(cx, cy)
-                    if score > best:
-                        best, period = score, p
-                if best < .65 or period < 6:
-                    if best > .4:
-                        self.last_low_confidence += 1
-                    continue
-                # Strong periodic evidence in both directions and flat block interiors.
-                score = min(1.0, .55 * best + .45 * flat)
-                patch = votes[y:y+win, x:x+win]
-                np.maximum(patch, score, out=patch)
-                block_map[y:y+win, x:x+win] = period
+        # Calculate window statistics in native code, then compare all eligible
+        # derivative profiles together. No skipped frames or sampled detection:
+        # this evaluates exactly the same 32x32 windows as the scalar scan.
+        ys, xs = np.mgrid[0:sh-win+1:stride, 0:sw-win+1:stride]
+        def sums(array, height, width):
+            integral = cv2.integral(array.astype(np.float64))
+            return (integral[ys+height, xs+width] - integral[ys, xs+width]
+                    - integral[ys+height, xs] + integral[ys, xs])
+        flat = (sums(dx < 3.5, win, win-1) + sums(dy < 3.5, win-1, win)) / (2*win*(win-1))
+        mean = sums(gray, win, win)/(win*win)
+        variance = np.maximum(0, sums(gray.astype(np.float64)**2, win, win)/(win*win)-mean**2)
+        eligible = (flat >= .77) & (variance >= 81)
+        cy, cx = ys[eligible], xs[eligible]
+        if len(cx):
+            # Prefix sums along the perpendicular axis give each 31-element
+            # derivative profile without materialising N full window images.
+            dx_sum = np.pad(np.cumsum(dx, axis=0, dtype=np.float64), ((1,0),(0,0)))
+            dy_sum = np.pad(np.cumsum(dy, axis=1, dtype=np.float64), ((0,0),(1,0)))
+            offsets = np.arange(win-1)
+            ex = ((dx_sum[cy[:,None]+win,cx[:,None]+offsets]
+                   - dx_sum[cy[:,None],cx[:,None]+offsets])/win).astype(np.float32)
+            ey = ((dy_sum[cy[:,None]+offsets,cx[:,None]+win]
+                   - dy_sum[cy[:,None]+offsets,cx[:,None]])/win).astype(np.float32)
+            strong = (ex.max(axis=1) >= 10) & (ey.max(axis=1) >= 10)
+            cy,cx,ex,ey = cy[strong],cx[strong],ex[strong],ey[strong]
+            flats = flat[eligible][strong]
+            ex -= ex.mean(axis=1,keepdims=True)
+            ey -= ey.mean(axis=1,keepdims=True)
+            best = np.zeros(len(cx),np.float32)
+            periods = np.zeros(len(cx),np.int32)
+            for p in range(4,13):
+                def correlation(profiles):
+                    a,b = profiles[:,:-p],profiles[:,p:]
+                    return np.sum(a*b,axis=1)/(np.sqrt(np.sum(a*a,axis=1)*np.sum(b*b,axis=1))+1e-6)
+                score = np.minimum(correlation(ex),correlation(ey))
+                better = score > best
+                best[better],periods[better] = score[better],p
+            accepted = (best >= .65) & (periods >= 6)
+            self.last_low_confidence += int(np.count_nonzero((~accepted) & (best > .4)))
+            for y,x,score,period,flatness in zip(cy[accepted],cx[accepted],best[accepted],periods[accepted],flats[accepted]):
+                patch = votes[y:y+win,x:x+win]
+                np.maximum(patch,min(1.0,.55*float(score)+.45*float(flatness)),out=patch)
+                block_map[y:y+win,x:x+win] = period
         raw = (votes >= .58).astype(np.uint8) * 255
         raw = cv2.morphologyEx(raw, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
         # Keep current evidence; bridge only a one-frame detector dropout in an

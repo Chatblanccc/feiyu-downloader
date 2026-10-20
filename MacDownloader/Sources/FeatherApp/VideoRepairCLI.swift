@@ -28,9 +28,15 @@ enum VideoRepairCLI {
         do {
             guard let path = argument("--video-repair-integration-test"), !path.isEmpty,
                   let destinationPath = argument("--destination"), !destinationPath.isEmpty else {
-                throw VideoRepairError.operation("Usage: --video-repair-integration-test INPUT --destination PATH [--mode both|enhance|mosaic] [--cancel-after SECONDS]")
+                throw VideoRepairError.operation("Usage: --video-repair-integration-test INPUT --destination PATH [--mode both|enhance|mosaic] [--performance balanced|quality|quiet] [--output-size source|fullHD] [--cancel-after SECONDS]")
             }
             let mode = argument("--mode") ?? "both"
+            guard let performance = VideoRepairPerformance(rawValue: argument("--performance") ?? "balanced") else {
+                throw VideoRepairError.operation("--performance must be balanced, quality, or quiet")
+            }
+            guard let outputSize = VideoRepairOutputSize(rawValue: argument("--output-size") ?? "source") else {
+                throw VideoRepairError.operation("--output-size must be source or fullHD")
+            }
             guard ["both", "enhance", "mosaic"].contains(mode) else { throw VideoRepairError.operation("--mode must be both, enhance, or mosaic") }
             let cancelAfter: Double?
             if let raw = argument("--cancel-after") {
@@ -40,7 +46,7 @@ enum VideoRepairCLI {
                 cancelAfter = seconds
             } else { cancelAfter = nil }
             let request = VideoRepairRequest(input: URL(fileURLWithPath: path), destination: URL(fileURLWithPath: destinationPath, isDirectory: true),
-                enhance: mode != "mosaic", repairMosaic: mode != "enhance")
+                enhance: mode != "mosaic", repairMosaic: mode != "enhance", performance: performance, outputSize: outputSize)
             let runtime = try VideoRepairRuntime.discover(bundle: .main)
             let engine = VideoRepairEngine(runtime: runtime)
             let receiptURL = request.destination.appendingPathComponent("completion-" + request.id.uuidString + ".json")
@@ -69,7 +75,8 @@ enum VideoRepairCLI {
             let encoded = try JSONEncoder().encode(result)
             let resultObject = try JSONSerialization.jsonObject(with: encoded)
             emit(["success": true, "result": resultObject, "receipt": receiptURL.path,
-                  "elapsedSeconds": Date().timeIntervalSince(started), "mode": mode, "wholeVideo": true])
+                  "elapsedSeconds": Date().timeIntervalSince(started), "mode": mode,
+                  "outputSize": outputSize.rawValue, "performance": request.performance.rawValue, "wholeVideo": true])
             return 0
         } catch {
             let cancelled = Task.isCancelled || error is CancellationError

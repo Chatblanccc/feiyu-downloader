@@ -71,6 +71,15 @@ final class VideoRepairApplicationModel: ObservableObject {
     @Published var inputURL: URL?
     @Published var enhance = true
     @Published var repairMosaic = true
+    @Published var performance: VideoRepairPerformance = .balanced
+    @Published var outputSize: VideoRepairOutputSize = .source {
+        didSet {
+            if outputSize == .fullHD {
+                enhance = true
+                if performance == .balanced { performance = .quality }
+            }
+        }
+    }
     @Published var destination: URL
     @Published private(set) var records: [VideoRepairHistoryItem] = []
     @Published private(set) var isBusy = false
@@ -131,7 +140,9 @@ final class VideoRepairApplicationModel: ObservableObject {
 
     func start() {
         guard canStart, let inputURL else { return }
-        let request = VideoRepairRequest(input: inputURL, destination: destination, enhance: enhance, repairMosaic: repairMosaic)
+        let request = VideoRepairRequest(input: inputURL, destination: destination,
+                                        enhance: enhance || outputSize == .fullHD, repairMosaic: repairMosaic,
+                                        performance: performance, outputSize: outputSize)
         let dropped = Array(records.dropFirst(199)).map(\.id)
         records.insert(VideoRepairHistoryItem(request: request), at: 0)
         records = Array(records.prefix(200))
@@ -204,6 +215,8 @@ final class VideoRepairApplicationModel: ObservableObject {
         selectFile(item.request.input)
         guard inputURL != nil else { return }
         enhance = item.request.enhance; repairMosaic = item.request.repairMosaic
+        performance = item.request.performance
+        outputSize = item.request.outputSize
         destination = item.request.destination
     }
 

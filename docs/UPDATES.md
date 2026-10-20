@@ -15,7 +15,7 @@
 - **macOS**：Sparkle 2.10.0。更新源固定为 `https://raw.githubusercontent.com/Chatblanccc/feiyu-downloader/main/updates/macos/appcast.xml`。应用内固定 Ed25519 公钥，更新压缩包和整个 appcast 都必须经过签名；解压前验证。支持的程序位置需可写，从只读 DMG 运行时应先复制到 Applications。
 - **Windows**：electron-updater 6.8.9 + NSIS，使用公开 GitHub provider。发布完整 EXE、`latest.yml` 和构建产生的 `.blockmap`；客户端默认完整下载并验证 SHA512。检查只接受稳定版本。安装前保存任务并退出，再由 NSIS 在原位置升级。
 
-两个平台从 **0.4.0** 起共用版本号，使用一个正式 Release（如 `v0.4.0`）。不要把只有某个平台资产的 Release 设为最新，否则另一平台的客户端可能找不到更新描述文件。只修改源码或建立 tag 不构成完整更新发布。
+默认的双平台正式发布从 **0.4.0** 起共用版本号，使用一个正式 Release（如 `v0.4.0`）。单独更新 macOS 时必须使用下文的 `--mac-only` 流程。不要把只有某个平台资产的 Release 设为 GitHub Latest，否则另一平台的客户端可能找不到更新描述文件。只修改源码或建立 tag 不构成完整更新发布。
 
 ## 签名与密钥
 
@@ -42,6 +42,31 @@ python3 scripts/prepare-release.py \
 ```
 
 脚本复核 Mac 包版本、公钥和代码签名，以及 Windows 安装包的实际字节数/SHA512。生成 Mac ZIP、签名 appcast、Windows 安装文件、第三方对应源码、SHA256SUMS 和资产清单到 `outputs/releases/v版本/`；不上传任何文件。输出目录要为空；若构建变化，使用新目录重新生成，不修改已签名文件。
+
+## 单独准备 macOS 更新
+
+例如 macOS 更新到 0.5.2、Windows 继续使用 0.4.1、Android 继续使用 alpha02 时，保持 Windows 和 Android 的版本与安装包原样。先验收 Mac 应用、DMG 和对应源码包，提交本次源码及发布说明，然后显式指定：
+
+```sh
+python3 scripts/prepare-release.py \
+  --mac-only \
+  --mac-app outputs/飞羽下载.app \
+  --sparkle-tools work/update-tools/bin \
+  --notes docs/releases/0.5.2.md \
+  --third-party-source work/ffmpeg-build/ffmpeg-9.0.2.tar.xz \
+  --extra-asset outputs/飞羽下载-0.5.2-AppleSilicon.dmg \
+  --extra-asset outputs/飞羽下载-0.5.2-macOS源码.zip
+```
+
+以上 DMG 和源码路径应替换为本次已验收文件的实际路径。`--extra-asset` 可以重复提供，也可加入适合公开的验收证据；文件必须为常规文件，不能使用符号链接、隐藏或含控制字符的文件名，且不得与生成的资产重名。`--third-party-source` 仍然必需。输出目录必须为空，包含已签名文件的目录不会被覆盖。
+
+此模式只检查 Mac 的版本、build、应用身份、公钥及签名，生成并验证更新 ZIP 和整个 appcast 的 Ed25519 签名，并将附加资产纳入 SHA256 清单。它不会读取或改写 Windows 更新描述文件。清单包含 `platforms: ["macos"]`、`prerelease: true`、`makeLatest: false` 和精确的 `sourceCommit`。
+
+`stage-release.py` 会按清单的平台检查对应提交中的版本。Mac 单平台清单只能建立带 `--prerelease --latest=false` 的草稿。发布草稿时保留这两个设置，例如在后续验收完成后使用 `gh release edit v0.5.2 --repo Chatblanccc/feiyu-downloader --draft=false --prerelease --latest=false`。不要把 Mac 单平台发布改成 GitHub Latest，也不要把 Windows 0.4.1 的版本或哈希改写成 0.5.2。
+
+Mac 是否收到更新由固定地址的签名 appcast 决定，GitHub 的预发行标签不会阻止 appcast 中列出的版本更新；Windows 稳定版则继续读取现有 GitHub Latest 的 `latest.yml`。必须先公开验证新的 Mac 资产，再把同批已签名 appcast 原样更新到 main。随后核对 Mac 更新源指向 0.5.2、GitHub Latest 仍指向 Windows 所在的正式版、Android 独立发布仍可下载。新安装包和对应源码公开验收后，再按每个平台仅保留最新已验收安装版本的规则清理旧交付资产。
+
+不指定 `--mac-only` 时，`--windows-dir` 仍为必需参数，双平台版本、Windows SHA512／实际字节数和更新文件名等现有验证全部保留。没有 `platforms` 字段的旧清单仍按 Mac + Windows 双平台验证。
 
 ## 上传与上线
 
