@@ -81,14 +81,14 @@ def validate_windows_metadata(metadata, directory, version):
     return file
 
 
-def appcast(version, build, filename, length, signature, notes, minimum_os='13.0'):
+def appcast(version, build, filename, length, signature, notes, minimum_os='13.0', *, prerelease=False):
     if not re.fullmatch(r'[A-Za-z0-9+/]{86}==', signature):
         raise ValueError('Expected Ed25519 archive signature')
     tree = ET.Element('rss', version='2.0')
     channel = ET.SubElement(tree, 'channel')
     ET.SubElement(channel, 'title').text = '飞羽下载 macOS 更新'
     ET.SubElement(channel, 'link').text = f'https://github.com/{REPOSITORY}/releases'
-    ET.SubElement(channel, 'description').text = '用户主动检查的稳定版本更新'
+    ET.SubElement(channel, 'description').text = '用户主动检查的 macOS 测试版本更新' if prerelease else '用户主动检查的稳定版本更新'
     item = ET.SubElement(channel, 'item')
     ET.SubElement(item, 'title').text = f'飞羽下载 {version}'
     ET.SubElement(item, 'pubDate').text = format_datetime(datetime.now(timezone.utc))
@@ -169,7 +169,8 @@ def main(argv=None):
     signer = (args.sparkle_tools / 'sign_update').resolve()
     signature = subprocess.check_output([str(signer), '--ed-key-file', str(args.key_file), '-p', str(mac_zip)], text=True).strip()
     feed = destination / 'appcast.xml'
-    feed.write_bytes(appcast(version, release['build'], mac_zip.name, mac_zip.stat().st_size, signature, args.notes.read_text(), info.get('LSMinimumSystemVersion', '13.0')))
+    feed.write_bytes(appcast(version, release['build'], mac_zip.name, mac_zip.stat().st_size, signature,
+                            args.notes.read_text(), info.get('LSMinimumSystemVersion', '13.0'), prerelease=args.mac_only))
     subprocess.run([str(signer), '--ed-key-file', str(args.key_file), str(feed)], check=True)
     subprocess.run([str(signer), '--verify', '--ed-key-file', str(args.key_file), str(feed)], check=True)
     # Archive signature and signed feed must correspond to the same private key.

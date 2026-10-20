@@ -166,6 +166,7 @@ class ReleaseChecks(unittest.TestCase):
                     mock.patch.object(release.subprocess, 'run', side_effect=local_run) as helpers, contextlib.redirect_stdout(io.StringIO()):
                 release.main(arguments)
             manifest = json.loads((output / 'release-assets.json').read_text())
+            self.assertIn('测试版本', ET.fromstring((output / 'appcast.xml').read_bytes()).find('channel/description').text)
             self.assertEqual(manifest['platforms'], ['macos'])
             self.assertTrue(manifest['prerelease'])
             self.assertFalse(manifest['makeLatest'])
