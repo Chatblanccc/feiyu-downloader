@@ -7,7 +7,7 @@ import Darwin
 @main enum FeatherLauncher {
     static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
-        if arguments.contains("--smoke-test") || arguments.contains("--integration-test") || arguments.contains("--diagnose") || arguments.contains("--ui-lifecycle-test") || arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") || arguments.contains("--video-repair-integration-test") {
+        if arguments.contains("--smoke-test") || arguments.contains("--integration-test") || arguments.contains("--diagnose") || arguments.contains("--ui-lifecycle-test") || arguments.contains("--history-deletion-test") || arguments.contains("--subtitle-worker") || arguments.contains("--subtitle-capabilities") || arguments.contains("--subtitle-integration-test") || arguments.contains("--video-repair-integration-test") {
             let application = NSApplication.shared
             application.setActivationPolicy(.prohibited)
             let task = Task {
@@ -87,6 +87,11 @@ struct FeatherApplication: App {
 
 enum FeatherCLI {
     static func run(_ arguments: [String]) async -> Int32 {
+        if arguments.contains("--history-deletion-test") {
+            let report = await HistoryDeletionChecks.run()
+            emit(report)
+            return report["success"] as? Bool == true ? 0 : 1
+        }
         if arguments.contains("--ui-lifecycle-test") {
             let report = await UILifecycleChecks.run()
             emit(report)

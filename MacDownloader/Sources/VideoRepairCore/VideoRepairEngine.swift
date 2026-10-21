@@ -86,6 +86,7 @@ private struct RepairReport: Encodable {
     let repairMosaic: Bool
     let performance: VideoRepairPerformance
     let outputSize: VideoRepairOutputSize
+    let engine: VideoRepairEngineKind
     let input: VideoRepairMediaInfo
     let output: VideoRepairMediaInfo
     let framesProcessed: Int?
@@ -105,6 +106,10 @@ public struct VideoRepairEngine: Sendable {
     public func run(_ request: VideoRepairRequest, receiptURL: URL,
                     onProgress: @escaping @Sendable (VideoRepairWorkerEvent) -> Void = { _ in }) async throws -> VideoRepairExportResult {
         try Task.checkCancellation()
+        guard request.engine == runtime.engine else { throw VideoRepairError.runtimeUnavailable }
+        guard request.engine == .seedvr2 || request.outputSize != .hd720 else {
+            throw VideoRepairError.operation("720P 深度增强需要选择 SeedVR2 引擎。")
+        }
         guard request.outputSize != .fullHD || request.enhance else {
             throw VideoRepairError.operation("1080P 精细增强需要开启画质增强，请开启后重试。")
         }
@@ -140,21 +145,30 @@ public struct VideoRepairEngine: Sendable {
         let report = staging.appendingPathComponent("修复报告.json")
         let workerReport = staging.appendingPathComponent("worker-detail.json")
         relay.emit(.init(stage: "preparing", fraction: 0.03, detail: "正在准备本机 AI，整片自动识别处理…"))
-        let environment = runtime.environment.merging([
+        var environment = runtime.environment.merging([
             "PYTHONDONTWRITEBYTECODE": "1", "PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1",
             "PYTHONPATH": "", "PYTHONHOME": "", "PYTHONSTARTUP": "",
             "OMP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "2", "VECLIB_MAXIMUM_THREADS": "2"
         ]) { _, fixed in fixed }
+        if request.engine == .seedvr2 {
+            environment.merge(["OMP_NUM_THREADS": "4", "VECLIB_MAXIMUM_THREADS": "4",
+                "PYTORCH_ENABLE_MPS_FALLBACK": "0", "PYTORCH_MPS_HIGH_WATERMARK_RATIO": "0.7",
+                "PYTORCH_MPS_LOW_WATERMARK_RATIO": "0.5", "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"]) { _, fixed in fixed }
+        }
         let result: ProcessResult
-        let memoryBudget = min(ProcessInfo.processInfo.physicalMemory / 4, 6 * 1_024 * 1_024 * 1_024)
-        do {
-            result = try await runner.run(ProcessCommand(executable: runtime.python, arguments: [runtime.worker.path,
-            "repair", "--input", source.path, "--output", output.path,
-            "--report", workerReport.path,
-            "--ffmpeg", runtime.ffmpeg.path, "--ffprobe", runtime.ffprobe.path,
+        let memoryBudget = request.engine == .seedvr2
+            ? min(ProcessInfo.processInfo.physicalMemory * 7 / 10, 23 * 1_024 * 1_024 * 1_024)
+            : min(ProcessInfo.processInfo.physicalMemory / 4, 6 * 1_024 * 1_024 * 1_024)
+        var arguments = [runtime.worker.path, "repair", "--input", source.path, "--output", output.path,
+            "--report", workerReport.path, "--ffmpeg", runtime.ffmpeg.path, "--ffprobe", runtime.ffprobe.path,
             "--enhance", request.enhance ? "true" : "false", "--repair-mosaic", request.repairMosaic ? "true" : "false",
             "--performance", request.performance.rawValue, "--output-size", request.outputSize.rawValue,
-            "--memory-budget", String(memoryBudget)],
+            "--memory-budget", String(memoryBudget)]
+        if request.engine == .seedvr2, let models = runtime.modelsDirectory, let upstream = runtime.upstreamDirectory {
+            arguments += ["--models-dir", models.path, "--upstream-dir", upstream.path]
+        }
+        do {
+            result = try await runner.run(ProcessCommand(executable: runtime.python, arguments: arguments,
             environment: environment, timeout: 7 * 24 * 60 * 60,
             maximumOutputBytes: 64 * 1_024 * 1_024, maximumStandardErrorBytes: 512 * 1_024,
             maximumLineBytes: 16 * 1_024, captureStandardOutput: false,
@@ -192,9 +206,13 @@ public struct VideoRepairEngine: Sendable {
               try SourceFingerprint(source) == original else { throw VideoRepairError.sourceChanged }
         let verifiedReport = RepairReport(completedAt: Date(), inputFileName: request.input.lastPathComponent,
             enhance: request.enhance, repairMosaic: request.repairMosaic, performance: request.performance,
-            outputSize: request.outputSize, input: info, output: repaired,
+            outputSize: request.outputSize, engine: request.engine, input: info, output: repaired,
             framesProcessed: completion.framesProcessed, framesTotal: completion.framesTotal,
-            perFrameRegionRepairs: completion.regionsRepaired, limitations: [
+            perFrameRegionRepairs: completion.regionsRepaired, limitations: request.engine == .seedvr2 ? [
+                "SeedVR2 使用相邻画面推测更清楚的纹理，不能保证恢复真实丢失的细节。",
+                "人脸、文字和小图案可能改变，运动或分段处可能出现闪烁，请与原片对照检查。",
+                "本地整片处理，模型按需下载后可离线使用，处理时间取决于画面和本机负载。"
+            ] : [
                 "整片自动检测网格状马赛克，使用 LaMa 重建局部画面；自动检测可能漏检或误检。",
                 "严重打码中丢失的细节由 AI 推测生成，无法保证与原始画面一致。",
                 "区域次数按逐帧处理累计，不能视为独立位置或人数。"

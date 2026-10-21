@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "id": "realesrgan-lama-macos-arm64",
+  "profile": "realesrgan",
+  "revision": "1",
+  "displayName": "标准本地修复",
+  "architecture": "arm64",
+  "minimumMacOS": "13.0",
+  "pythonRelativePath": "python/bin/python3",
+  "upstreamRelativePath": "upstream",
+  "modelsRelativePath": "models",
+  "totalDownloadBytes": 492431224,
+  "runtimeDownloadBytes": 147773707,
+  "modelDownloadBytes": 344657517,
+  "minimumFreeDiskBytes": 3221225472,
+  "requirementsSHA256": "e550eebe9c7d10b717e2b1a622b52db40a176412a537fb5a9bda0be9e9cc847a",
+  "licenseFiles": [
+    {
+      "filename": "LaMa-Apache-2.0.txt",
+      "bytes": 11348,
+      "sha256": "4ceeeac5a802e86c413c22b16cce8e9a22027b0250c97e6f8ac97c14cf0542c0"
+    },
+    {
+      "filename": "Real-ESRGAN-BSD-3-Clause.txt",
+      "bytes": 1519,
+      "sha256": "4a699ec4863d96a91fc265948a0c90033f7e8735d515524dcf3444736406e0c2"
+    },
+    {
+      "filename": "BasicSR-Apache-2.0.txt",
+      "bytes": 11350,
+      "sha256": "5447872f21ddc29dc0dc060d5c885513c01c904e9da9931bba69898a6fb4d415"
+    },
+    {
+      "filename": "IOPaint-Apache-2.0.txt",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ],
+  "policy": {
+    "networkDuringInstallationOnly": true,
+    "uploadsMedia": false,
+    "globalPythonRequired": false,
+    "modelsBundledInApplication": false
+  },
+  "downloads": [
+    {
+      "id": "python",
+      "kind": "python",
+      "filename": "cpython-3.11.10+20241016-aarch64-apple-darwin-install_only.tar.gz",
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20241016/cpython-3.11.10%2B20241016-aarch64-apple-darwin-install_only.tar.gz",
+      "sha256": "5a69382da99c4620690643517ca1f1f53772331b347e75f536088c42a4cf6620",
+      "version": "3.11.10+20241016",
+      "sourceCommit": "78e57bd18b48c357904b47a6ae6999ebb255c578",
+      "license": "PSF-2.0 and bundled dependency licenses",
+      "bytes": 17793306,
+      "archiveAudit": {
+        "status": "passed",
+        "root": "python",
+        "regularFiles": 2148,
+        "symbolicLinks": 9,
+        "hardLinks": 0,
+        "checks": [
+          "relative-root-contained-paths",
+          "no-special-files",
+          "no-duplicate-entries",
+          "root-contained-link-targets",
+          "no-link-ancestor-writes",
+          "no-link-cycles-or-dangling-links"
+        ]
+      }
+    },
+    {
+      "id": "wheel-filelock",
+      "kind": "wheel",
+      "name": "filelock",
+      "version": "4.2.4",
+      "filename": "filelock-4.2.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e0/1b/5e74289a1878e666bb4b65fe5805a04cafcac2aa5f519ef1ead67ef91c56/filelock-4.2.4-py3-none-any.whl",
+      "sha256": "301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e",
+      "bytes": 162475,
+      "metadataURL": "https://pypi.org/pypi/filelock/4.2.4/json",
+      "license": "MIT"
+    },
+    {
+      "id": "wheel-fsspec",
+      "kind": "wheel",
+      "name": "fsspec",
+      "version": "2026.9.0",
+      "filename": "fsspec-2026.9.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6c/c0/a98505f18594f1bce828bb159cec0fcf9860562f1a2c85913409fc8f3d9e/fsspec-2026.9.0-py3-none-any.whl",
+      "sha256": "8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f",
+      "bytes": 221738,
+      "metadataURL": "https://pypi.org/pypi/fsspec/2026.9.0/json",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "wheel-jinja2",
+      "kind": "wheel",
+      "name": "jinja2",
+      "version": "3.1.6",
+      "filename": "jinja2-3.1.6-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+      "bytes": 134899,
+      "metadataURL": "https://pypi.org/pypi/jinja2/3.1.6/json",
+      "license": "See wheel dist-info licenses"
+    },
+    {
+      "id": "wheel-markupsafe",
+      "kind": "wheel",
+      "name": "MarkupSafe",
+      "version": "3.0.4",
+      "filename": "markupsafe-3.0.4-cp311-cp311-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/6c/14/0b05f79b4733e264a18d08fe08fa1df7347630ff32a6cb82180d9dccec55/markupsafe-3.0.4-cp311-cp311-macosx_11_0_arm64.whl",
+      "sha256": "7d3391b2188d18737cb2fa147028b1096236eaa7e156446c650a489fa2cadc91",
+      "bytes": 12063,
+      "metadataURL": "https://pypi.org/pypi/MarkupSafe/3.0.4/json",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "wheel-mpmath",
+      "kind": "wheel",
+      "name": "mpmath",
+      "version": "1.3.0",
+      "filename": "mpmath-1.3.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl",
+      "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
+      "bytes": 536198,
+      "metadataURL": "https://pypi.org/pypi/mpmath/1.3.0/json",
+      "license": "BSD"
+    },
+    {
+      "id": "wheel-networkx",
+      "kind": "wheel",
+      "name": "networkx",
+      "version": "3.6.1",
+      "filename": "networkx-3.6.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/9e/c9/b2622292ea83fbb4ec318f5b9ab867d0a28ab43c5717bb85b0a5f6b3b0a4/networkx-3.6.1-py3-none-any.whl",
+      "sha256": "d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762",
+      "bytes": 2068504,
+      "metadataURL": "https://pypi.org/pypi/networkx/3.6.1/json",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "wheel-numpy",
+      "kind": "wheel",
+      "name": "numpy",
+      "version": "1.26.4",
+      "filename": "numpy-1.26.4-cp311-cp311-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/1a/2e/151484f49fd03944c4a3ad9c418ed193cfd02724e138ac8a9505d056c582/numpy-1.26.4-cp311-cp311-macosx_11_0_arm64.whl",
+      "sha256": "edd8b5fe47dab091176d21bb6de568acdd906d1887a4584a15a9a96a1dca06ef",
+      "bytes": 13997127,
+      "metadataURL": "https://pypi.org/pypi/numpy/1.26.4/json",
+      "license": "See wheel dist-info licenses"
+    },
+    {
+      "id": "wheel-opencv-python-headless",
+      "kind": "wheel",
+      "name": "opencv-python-headless",
+      "version": "4.11.0.86",
+      "filename": "opencv_python_headless-4.11.0.86-cp37-abi3-macosx_13_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/dc/53/2c50afa0b1e05ecdb4603818e85f7d174e683d874ef63a6abe3ac92220c8/opencv_python_headless-4.11.0.86-cp37-abi3-macosx_13_0_arm64.whl",
+      "sha256": "48128188ade4a7e517237c8e1e11a9cdf5c282761473383e77beb875bb1e61ca",
+      "bytes": 37326460,
+      "metadataURL": "https://pypi.org/pypi/opencv-python-headless/4.11.0.86/json",
+      "license": "Apache 2.0"
+    },
+    {
+      "id": "wheel-pip",
+      "kind": "wheel",
+      "name": "pip",
+      "version": "24.1.2",
+      "filename": "pip-24.1.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e7/54/0c1c068542cee73d8863336e974fc881e608d0170f3af15d0c0f28644531/pip-24.1.2-py3-none-any.whl",
+      "sha256": "7cd207eed4c60b0f411b444cd1464198fe186671c323b6cd6d433ed80fc9d247",
+      "bytes": 1824406,
+      "metadataURL": "https://pypi.org/pypi/pip/24.1.2/json",
+      "license": "MIT"
+    },
+    {
+      "id": "wheel-setuptools",
+      "kind": "wheel",
+      "name": "setuptools",
+      "version": "70.3.0",
+      "filename": "setuptools-70.3.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/15/88e46eb9387e905704b69849618e699dc2f54407d8953cc4ec4b8b46528d/setuptools-70.3.0-py3-none-any.whl",
+      "sha256": "fe384da74336c398e0d956d1cae0669bc02eed936cdb1d49b57de1990dc11ffc",
+      "bytes": 931070,
+      "metadataURL": "https://pypi.org/pypi/setuptools/70.3.0/json",
+      "license": "See wheel dist-info licenses"
+    },
+    {
+      "id": "wheel-sympy",
+      "kind": "wheel",
+      "name": "sympy",
+      "version": "1.13.1",
+      "filename": "sympy-1.13.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b2/fe/81695a1aa331a842b582453b605175f419fe8540355886031328089d840a/sympy-1.13.1-py3-none-any.whl",
+      "sha256": "db36cdc64bf61b9b24578b6f7bab1ecdd2452cf008f34faa33776680c26d66f8",
+      "bytes": 6189177,
+      "metadataURL": "https://pypi.org/pypi/sympy/1.13.1/json",
+      "license": "BSD"
+    },
+    {
+      "id": "wheel-torch",
+      "kind": "wheel",
+      "name": "torch",
+      "version": "2.6.0",
+      "filename": "torch-2.6.0-cp311-none-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/0b/fa/f33a4148c6fb46ca2a3f8de39c24d473822d5774d652b66ed9b1214da5f7/torch-2.6.0-cp311-none-macosx_11_0_arm64.whl",
+      "sha256": "94fc63b3b4bedd327af588696559f68c264440e2503cc9e6954019473d74ae21",
+      "bytes": 66530713,
+      "metadataURL": "https://pypi.org/pypi/torch/2.6.0/json",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "wheel-typing-extensions",
+      "kind": "wheel",
+      "name": "typing-extensions",
+      "version": "4.16.0",
+      "filename": "typing_extensions-4.16.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+      "bytes": 45571,
+      "metadataURL": "https://pypi.org/pypi/typing-extensions/4.16.0/json",
+      "license": "PSF-2.0"
+    },
+    {
+      "id": "model-big-lama",
+      "kind": "model",
+      "filename": "big-lama.pt",
+      "url": "https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt",
+      "sha256": "344c77bbcb158f17dd143070d1e789f38a66c04202311ae3a258ef66667a9ea9",
+      "bytes": 205669692,
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "model-realesr-general-x4v3",
+      "kind": "model",
+      "filename": "realesr-general-x4v3.pth",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth",
+      "sha256": "8dc7edb9ac80ccdc30c3a5dca6616509367f05fbc184ad95b731f05bece96292",
+      "bytes": 4885111,
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "model-realesrgan_x2plus",
+      "kind": "model",
+      "filename": "RealESRGAN_x2plus.pth",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth",
+      "sha256": "49fafd45f8fd7aa8d31ab2a22d14d91b536c34494a5cfe31eb5d89c2fa266abb",
+      "bytes": 67061725,
+      "license": "BSD-3-Clause"
+    },
+    {
+      "id": "model-realesrgan_x4plus",
+      "kind": "model",
+      "filename": "RealESRGAN_x4plus.pth",
+      "url": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
+      "sha256": "4fa0d38905f75ac06eb49a7951b426670021be3018265fd191d2125df9d682f1",
+      "bytes": 67040989,
+      "license": "BSD-3-Clause"
+    }
+  ],
+  "workerFiles": [
+    {
+      "filename": "worker.py",
+      "bytes": 26884,
+      "sha256": "96d4ec16783c704d82072806d89d4e45a27606cd8d8728170de40f4cd8d02f03"
+    },
+    {
+      "filename": "detector.py",
+      "bytes": 8247,
+      "sha256": "8aac18ba456bb5719a95feea3c5723c0c504e547eb031fe497be568f3586cdac"
+    },
+    {
+      "filename": "srvgg_arch.py",
+      "bytes": 4429,
+      "sha256": "79c06d4050cd4cdfd821ba0c10432ba2f8d0ae6804465ffc87e87680316abcf2"
+    },
+    {
+      "filename": "rrdb_arch.py",
+      "bytes": 5280,
+      "sha256": "4cfdf16c57dce0da60ac3e8bc2db8bd357f7ffcfa4eee0b8c2d44c9f62acce8b"
+    },
+    {
+      "filename": "super_resolution.py",
+      "bytes": 7442,
+      "sha256": "58f4ee2ce536a4d4e9df28b6faf2f004736036cd5a9e93e829a42a769aa28791"
+    },
+    {
+      "filename": "requirements.txt",
+      "bytes": 196,
+      "sha256": "9bf5b06e7edb64b415e8a633f824d85dca9061d4de201be7ec9f378aeb6bcb18"
+    },
+    {
+      "filename": "README.md",
+      "bytes": 5985,
+      "sha256": "eef29912d4b76bb0cbb960a32b6aaf8432fe490b9f44f7c682f080c220c69861"
+    }
+  ],
+  "upstream": {
+    "url": "https://github.com/xinntao/Real-ESRGAN",
+    "license": "BSD-3-Clause",
+    "architectureSource": "https://github.com/XPixelGroup/BasicSR",
+    "architectureLicense": "Apache-2.0"
+  }
+}

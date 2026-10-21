@@ -42,11 +42,11 @@ jobs:
           mkdir -p work
           swiftc -swift-version 5 -D FEATHER_STANDALONE MacDownloader/Sources/DownloadCore/*.swift MacDownloader/Tests/DownloadCoreTests/DownloadCoreTests.swift -o work/core-tests
           work/core-tests
-      - name: Video repair lifecycle regressions
+      - name: Video repair and on-demand component lifecycle regressions
         run: |
           brew install ffmpeg
           mkdir -p work/ci-tools
           ln -s "$(command -v ffmpeg)" work/ci-tools/ffmpeg
           ln -s "$(command -v ffprobe)" work/ci-tools/ffprobe
           ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=160x120:rate=10 -f lavfi -i sine=frequency=440 -t 2 -c:v libx264 -pix_fmt yuv420p -c:a aac work/ci-input.mp4
-          FEATHER_TEST_VIDEO="$PWD/work/ci-input.mp4" FEATHER_TOOLS_DIR="$PWD/work/ci-tools" swift test --package-path MacDownloader --filter VideoRepairCoreTests
+          FEATHER_TEST_VIDEO="$PWD/work/ci-input.mp4" FEATHER_TOOLS_DIR="$PWD/work/ci-tools" swift test --package-path MacDownloader --arch arm64 --filter 'VideoRepairCoreTests.VideoRepairCoreTests|VideoRepairCoreTests.AIComponentTests'

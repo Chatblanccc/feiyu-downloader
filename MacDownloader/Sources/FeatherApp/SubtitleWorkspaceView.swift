@@ -119,6 +119,7 @@ struct SubtitleWorkspaceView: View {
                 Spacer()
                 if let fraction = item.fraction { Text("\(Int(min(1, max(0, fraction.isFinite ? fraction : 0)) * 100))%")
                         .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary) }
+                removeButton(item)
             }
             if item.state.active {
                 ProgressView(value: item.fraction ?? 0, total: 1).progressViewStyle(.linear).frame(height: 6)
@@ -138,10 +139,19 @@ struct SubtitleWorkspaceView: View {
                         .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Button("再次处理") { DispatchQueue.main.async { model.reuse(item) } }.disabled(model.isBusy)
+                removeButton(item)
             }
             if let result = item.result, item.state == .completed { resultButtons(result) }
             else if let error = item.error { Text(error).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2) }
         }.padding(13).background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    private func removeButton(_ item: SubtitleHistoryItem) -> some View {
+        Button("移除记录", role: .destructive) { DispatchQueue.main.async { model.remove(item.id) } }
+            .buttonStyle(.borderless)
+            .disabled(!model.canRemove(item.id))
+            .help(model.canRemove(item.id) ? "仅移除任务记录，保留原视频、字幕和导出视频。" : "请先取消处理，等待任务停止后再移除记录。")
+            .accessibilityLabel("移除字幕任务记录：\(item.request.input.lastPathComponent)")
     }
 
     private func resultButtons(_ result: SubtitleExportResult) -> some View {

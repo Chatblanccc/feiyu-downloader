@@ -69,6 +69,12 @@ final class VideoRepairFeature {
 @MainActor
 final class VideoRepairApplicationModel: ObservableObject {
     @Published var inputURL: URL?
+    @Published var engine: VideoRepairEngineKind = .realesrgan {
+        didSet {
+            if engine == .seedvr2 { enhance = true; repairMosaic = false; performance = .quality; outputSize = .hd720 }
+            else if outputSize == .hd720 { outputSize = .source }
+        }
+    }
     @Published var enhance = true
     @Published var repairMosaic = true
     @Published var performance: VideoRepairPerformance = .balanced
@@ -84,6 +90,9 @@ final class VideoRepairApplicationModel: ObservableObject {
     @Published private(set) var records: [VideoRepairHistoryItem] = []
     @Published private(set) var isBusy = false
     @Published var notice: String?
+    @Published private(set) var isPreparingComponent = false
+    @Published private(set) var componentFraction: Double?
+    @Published private(set) var componentDetail = ""
 
     private let historyURL: URL
     private let receiptsURL: URL
@@ -93,6 +102,9 @@ final class VideoRepairApplicationModel: ObservableObject {
     private var progressTask: Task<Void, Never>?
     private var mailbox: VideoRepairProgressMailbox?
     private var shuttingDown = false
+    private var componentTask: Task<Void, Never>?
+    private var componentProgressTask: Task<Void, Never>?
+    private var componentMailbox: VideoRepairProgressMailbox?
 
     init(historyFile: URL? = nil) {
         destination = AppTools.downloadsDirectory.appendingPathComponent("AI修复", isDirectory: true)
@@ -101,11 +113,50 @@ final class VideoRepairApplicationModel: ObservableObject {
         restore()
     }
 
-    deinit { worker?.cancel(); engineTask?.cancel(); progressTask?.cancel(); mailbox?.close() }
+    deinit { worker?.cancel(); engineTask?.cancel(); progressTask?.cancel(); mailbox?.close(); componentTask?.cancel(); componentProgressTask?.cancel(); componentMailbox?.close() }
 
     var current: VideoRepairHistoryItem? { records.first }
     var canStart: Bool { !isBusy && !shuttingDown && inputURL != nil && (enhance || repairMosaic) }
-    var hasActiveWorkForUpdate: Bool { isBusy || worker != nil || engineTask != nil }
+    var hasActiveWorkForUpdate: Bool { isBusy || worker != nil || engineTask != nil || componentTask != nil }
+    var componentReady: Bool { (try? VideoRepairRuntime.discover(bundle: .main, engine: engine)) != nil }
+    var componentDownloadSize: String {
+        guard let catalog = try? componentStore.catalog else { return "组件" }
+        return ByteCountFormatter.string(fromByteCount: catalog.totalDownloadBytes, countStyle: .file)
+    }
+    private var componentStore: VideoRepairComponentStore {
+        VideoRepairComponentStore(supportDirectory: AppTools.supportDirectory,
+                                  resourcesDirectory: Bundle.main.resourceURL ?? Bundle.main.bundleURL, engine: engine)
+    }
+
+    func prepareComponents(startWhenReady: Bool = false, forceRepair: Bool = false) {
+        guard !isBusy, !shuttingDown else { return }
+        let selected = engine, store = componentStore
+        isBusy = true; isPreparingComponent = true; componentFraction = nil
+        componentDetail = "正在检查本地组件和可用空间…"; notice = nil
+        let updates = VideoRepairProgressMailbox(); componentMailbox = updates
+        componentProgressTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(nanoseconds: 150_000_000) } catch { break }
+                if let event = updates.take() { self?.componentFraction = event.fraction; self?.componentDetail = event.detail ?? "正在准备组件…" }
+            }
+        }
+        componentTask = Task { [weak self] in
+            var ready = false
+            do {
+                _ = try await store.ensureInstalled(forceRepair: forceRepair) { updates.submit($0) }
+                try Task.checkCancellation()
+                self?.componentFraction = 1; self?.componentDetail = "组件已准备好，之后可离线使用。"
+                ready = true
+            } catch {
+                let cancelled = Task.isCancelled || error is CancellationError
+                self?.componentDetail = cancelled ? "已停止下载，已校验的文件会保留供下次使用。" : "组件尚未准备完成，可重试。"
+                self?.notice = cancelled ? nil : error.localizedDescription
+            }
+            updates.close(); self?.componentProgressTask?.cancel(); self?.componentProgressTask = nil; self?.componentMailbox = nil
+            self?.isBusy = false; self?.isPreparingComponent = false; self?.componentTask = nil
+            if ready && startWhenReady && self?.engine == selected && self?.shuttingDown == false { self?.startPrepared() }
+        }
+    }
 
     func selectFile(_ url: URL) {
         guard !isBusy, !shuttingDown else { return }
@@ -139,10 +190,16 @@ final class VideoRepairApplicationModel: ObservableObject {
     }
 
     func start() {
+        guard canStart else { return }
+        if componentReady { startPrepared() }
+        else { prepareComponents(startWhenReady: true) }
+    }
+
+    private func startPrepared() {
         guard canStart, let inputURL else { return }
         let request = VideoRepairRequest(input: inputURL, destination: destination,
                                         enhance: enhance || outputSize == .fullHD, repairMosaic: repairMosaic,
-                                        performance: performance, outputSize: outputSize)
+                                        performance: performance, outputSize: outputSize, engine: engine)
         let dropped = Array(records.dropFirst(199)).map(\.id)
         records.insert(VideoRepairHistoryItem(request: request), at: 0)
         records = Array(records.prefix(200))
@@ -170,7 +227,7 @@ final class VideoRepairApplicationModel: ObservableObject {
         worker = Task { [weak self] in
             do {
                 let task = Task.detached(priority: .utility) {
-                    let runtime = try VideoRepairRuntime.discover(bundle: .main)
+                    let runtime = try VideoRepairRuntime.discover(bundle: .main, engine: request.engine)
                     let engine = VideoRepairEngine(runtime: runtime)
                     return try await engine.run(request, receiptURL: receipt) { mailbox.submit($0) }
                 }
@@ -194,6 +251,7 @@ final class VideoRepairApplicationModel: ObservableObject {
     }
 
     func cancel() {
+        if isPreparingComponent { componentTask?.cancel(); componentDetail = "正在停止下载并释放资源…"; return }
         guard let activeID else { return }
         update(activeID) { $0.state = .cancelling; $0.detail = "正在停止并释放本次处理资源…" }
         engineTask?.cancel(); worker?.cancel()
@@ -204,6 +262,8 @@ final class VideoRepairApplicationModel: ObservableObject {
         shuttingDown = true
         cancel()
         let pending = worker
+        let preparing = componentTask
+        await preparing?.value
         await pending?.value
         progressTask?.cancel(); mailbox?.close()
         saveNoticeIfNeeded()
@@ -214,10 +274,31 @@ final class VideoRepairApplicationModel: ObservableObject {
         inputURL = nil
         selectFile(item.request.input)
         guard inputURL != nil else { return }
+        engine = item.request.engine
         enhance = item.request.enhance; repairMosaic = item.request.repairMosaic
         performance = item.request.performance
         outputSize = item.request.outputSize
         destination = item.request.destination
+    }
+
+    func canRemove(_ id: UUID) -> Bool {
+        guard activeID != id, let item = records.first(where: { $0.id == id }) else { return false }
+        return !item.state.active
+    }
+
+    func remove(_ id: UUID) {
+        guard canRemove(id) else { return }
+        let previous = records
+        records.removeAll { $0.id == id }
+        do {
+            try persist()
+        } catch {
+            records = previous
+            notice = "无法移除 AI 修复记录：\(error.localizedDescription)。记录已保留，请稍后重试。"
+            return
+        }
+        // Only discard the internal recovery receipt; source and exported files stay intact.
+        try? FileManager.default.removeItem(at: receiptURL(id))
     }
 
     func reveal(_ result: VideoRepairExportResult) {
@@ -324,8 +405,7 @@ final class VideoRepairApplicationModel: ObservableObject {
         try fm.createDirectory(at: historyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fm.createDirectory(at: receiptsURL, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: receiptsURL.path)
-        try JSONEncoder().encode(Array(records.prefix(200))).write(to: historyURL, options: .atomic)
-        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: historyURL.path)
+        try TaskHistoryStorage.write(JSONEncoder().encode(Array(records.prefix(200))), to: historyURL)
     }
 
     private func saveNoticeIfNeeded() {

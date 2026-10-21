@@ -6,7 +6,7 @@
 
 | 版本 | 技术 | 系统要求 | 说明 |
 | --- | --- | --- | --- |
-| [macOS 0.5.2](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，下载和 AI 修复 macOS 13+，字幕 macOS 26+ | 本地整片画质增强与局部 AI 修复；HLS/DASH 8 分片并发 |
+| [macOS 0.5.4](MacDownloader/README.md) | SwiftUI / Foundation | Apple Silicon，常规增强 macOS 13+；SeedVR2 macOS 14+、32 GB 内存；字幕 macOS 26+ | AI 组件按需下载，新增 SeedVR2 深度清晰（实验）；基础包约 89 MB |
 | [Windows 0.4.1](WindowsDownloader/README.md) | Electron / Node.js | Windows 10/11 x64 | 使用本地语音识别与翻译模型 |
 | [Android 0.1.0-alpha02](AndroidDownloader/README.md) | Kotlin / Jetpack Compose | Android 10+，ARM64 | 下载功能内测版，验收状态见模块报告 |
 
@@ -15,17 +15,18 @@
 - 生成 SRT、可开关字幕轨或直接显示在画面中的字幕。
 - 可调整字幕字号、颜色与位置。
 - Mac 可整片自动检测规则像素马赛克并做局部 AI 补画，画质增强和局部修复默认同时开启；效果与识别范围见 Mac 说明。
+- Mac 可选择 SeedVR2 3B 深度清晰（实验）。首次下载约 7.56 GB 组件后可离线处理，速度较慢，可能重绘细节；常规引擎首次约 492 MB。
 - 浏览器登录状态仅在用户主动选择后使用。
 
 各网站能否下载取决于内容权限、网站变化和网络环境，不保证所有链接可用。请仅下载自己拥有或已获得许可的内容，并遵守网站条款。
 
 ## 安装包
 
-- [macOS 0.5.2 · Apple Silicon 测试版](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/v0.5.2)：1080P 精细增强与修复提速。
+- [macOS 0.5.4 · Apple Silicon 测试版](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/v0.5.4)：约 89 MB 基础包、AI 组件按需下载与 SeedVR2 深度清晰（实验）。安装文件为 `FeiyuDownload-0.5.4-macOS-arm64.dmg`。
 - [Windows 0.4.1 · x64](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/v0.4.1)。
 - [Android 0.1.0-alpha02 · ARM64 内测版](https://github.com/Chatblanccc/feiyu-downloader/releases/tag/android-v0.1.0-alpha02)。
 
-各平台仅保留最新已验收安装包，历史源码提交保留。Mac 版本说明与实测边界见 [0.5.2 发布说明](docs/releases/0.5.2.md)。
+各平台仅保留最新已验收安装包，历史源码提交保留。Mac 版本说明、实际安装文件名和实测边界见 [0.5.4 发布说明](docs/releases/0.5.4.md)。
 
 ## 检查更新
 
@@ -38,12 +39,10 @@
 ```sh
 python3 MacDownloader/scripts/fetch-tools.py
 python3 MacDownloader/scripts/build-ffmpeg.py
-python3 MacDownloader/scripts/fetch-video-repair.py
 python3 MacDownloader/scripts/build-app.py
-python3 MacDownloader/scripts/package-dmg.py
 ```
 
-`build-app.py` 生成 `outputs/飞羽下载.app`；生成 DMG 前还需完成对应版本的核心、视频修复和界面验收，打包脚本会检查验收记录。
+`build-app.py` 生成 `outputs/飞羽下载.app`，基础程序不下载或内嵌 AI 运行时和模型；首次在程序中使用所选引擎时准备组件。`fetch-video-repair.py` 仅供旧引擎开发验收。发布前需完成对应版本的核心、视频修复和界面验收，签名更新归档与上线流程见 [更新说明](docs/UPDATES.md)。
 
 macOS 构建需要 Apple Silicon Mac、Xcode Command Line Tools 和 Python 3；字幕开发需要提供相关系统框架的 macOS 26 SDK。
 

@@ -49,6 +49,34 @@ struct VideoRepairWorkspaceView: View {
             Text("选择视频后，自动检查整个视频并输出修复版本，无需选择片段或框选区域。视频在本机处理。")
                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("修复引擎", selection: $model.engine) {
+                    ForEach(VideoRepairEngineKind.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).disabled(model.isBusy)
+                Text(model.engine.detail).font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Label(model.componentReady ? "组件已准备好 · 可离线使用" : "首次使用下载约 " + model.componentDownloadSize,
+                          systemImage: model.componentReady ? "checkmark.circle" : "arrow.down.circle")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                    Spacer()
+                    if !model.componentReady && !model.isPreparingComponent {
+                        Button("下载组件") { DispatchQueue.main.async { model.prepareComponents() } }.disabled(model.isBusy)
+                    } else if model.componentReady && !model.isPreparingComponent {
+                        Button("重新准备组件") { DispatchQueue.main.async { model.prepareComponents(forceRepair: true) } }.disabled(model.isBusy)
+                    }
+                }
+                if model.isPreparingComponent {
+                    if let fraction = model.componentFraction { ProgressView(value: fraction, total: 1) }
+                    else { ProgressView().progressViewStyle(.linear) }
+                    HStack {
+                        Text(model.componentDetail).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(3)
+                        Spacer()
+                        Button("取消下载") { DispatchQueue.main.async { model.cancel() } }
+                    }
+                }
+            }
+
             HStack(spacing: 10) {
                 Image(systemName: "film").foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 3) {
@@ -72,15 +100,18 @@ struct VideoRepairWorkspaceView: View {
 
             VStack(alignment: .leading, spacing: 7) {
                 Picker("增强规格", selection: $model.outputSize) {
-                    ForEach(VideoRepairOutputSize.allCases, id: \.self) { size in
-                        Text(size.title).tag(size)
+                    ForEach(VideoRepairOutputSize.allCases.filter { model.engine == .seedvr2 || $0 != .hd720 }, id: \.self) { size in
+                        Text(model.engine == .seedvr2 && size == .source ? "保留原尺寸" : size.title).tag(size)
                     }
                 }.pickerStyle(.segmented).disabled(model.isBusy)
-                Text(model.outputSize.detail)
+                Text(model.engine == .seedvr2 && model.outputSize != .fullHD
+                     ? "按 720P 范围重建细节，保留原片比例。保留原尺寸只保留输出尺寸，较大原片的细节可能减少；高分辨率素材建议选 1080P 或常规增强。"
+                     : model.outputSize.detail)
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            if model.engine == .realesrgan {
+              VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $model.enhance) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(model.outputSize == .fullHD ? "AI 精细增强（已开启）" : "画质增强").font(.system(size: 13, weight: .medium))
@@ -114,8 +145,12 @@ struct VideoRepairWorkspaceView: View {
                      : "1080P 精细增强 · 画质优先：逐帧运行 AI 超分辨率，计算量高于原尺寸轻度增强。")
                     .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
+            } else {
+                Text("SeedVR2 按相邻画面推测清晰细节。720P 计算量低于 1080P；本机处理可能远慢于视频时长，任务开始后可以取消。")
+                    .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
 
-            Text("马赛克遮挡的细节由 AI 推测，无法保证真实还原。建议对照原视频检查结果。")
+            Text(model.engine == .seedvr2 ? "人脸、文字、小图案和运动纹理可能改变或闪烁，请与原片对照检查。" : "马赛克遮挡的细节由 AI 推测，无法保证真实还原。建议对照原视频检查结果。")
                 .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 8) {
@@ -128,7 +163,7 @@ struct VideoRepairWorkspaceView: View {
                 Text("导出独立 MP4 · 保留原视频和声音")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
-                Button(model.isBusy ? "正在处理…" : "开始整片 AI 修复") { DispatchQueue.main.async { model.start() } }
+                Button(model.isPreparingComponent ? "正在准备组件…" : model.isBusy ? "正在处理…" : model.componentReady ? "开始整片 AI 修复" : "下载组件并开始修复") { DispatchQueue.main.async { model.start() } }
                     .buttonStyle(.borderedProminent).controlSize(.large).disabled(!model.canStart)
             }
             if !model.enhance && !model.repairMosaic {
@@ -168,8 +203,12 @@ struct VideoRepairWorkspaceView: View {
                 .lineLimit(5).frame(maxWidth: .infinity, alignment: .leading)
             if let result = item.result, item.state == .completed { resultButtons(result) }
             if !item.state.active {
-                Button("使用这个视频再次处理") { DispatchQueue.main.async { model.reuse(item) } }
-                    .font(.system(size: 11)).buttonStyle(.borderless).disabled(model.isBusy)
+                HStack(spacing: 14) {
+                    Button("使用这个视频再次处理") { DispatchQueue.main.async { model.reuse(item) } }
+                        .disabled(model.isBusy)
+                    removeButton(item)
+                }
+                .font(.system(size: 11)).buttonStyle(.borderless)
             }
         }
         .padding(16)
@@ -186,6 +225,7 @@ struct VideoRepairWorkspaceView: View {
                         .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Button("再次处理") { DispatchQueue.main.async { model.reuse(item) } }.disabled(model.isBusy)
+                removeButton(item)
             }
             if let result = item.result, item.state == .completed { resultButtons(result) }
             else { Text(item.error ?? item.detail).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2) }
@@ -194,7 +234,16 @@ struct VideoRepairWorkspaceView: View {
         .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 9))
     }
 
+    private func removeButton(_ item: VideoRepairHistoryItem) -> some View {
+        Button("移除记录", role: .destructive) { DispatchQueue.main.async { model.remove(item.id) } }
+            .buttonStyle(.borderless)
+            .disabled(!model.canRemove(item.id))
+            .help("仅移除任务记录，保留原视频、修复视频和处理报告")
+            .accessibilityLabel("移除修复任务记录：\(item.request.input.lastPathComponent)")
+    }
+
     private func modeDescription(_ request: VideoRepairRequest) -> String {
+        if request.engine == .seedvr2 { return "SeedVR2 深度清晰 · " + (request.outputSize == .source ? "保留原尺寸" : request.outputSize.title) }
         let features = request.enhance && request.repairMosaic ? "画质增强 + 局部修复" : request.enhance ? "画质增强" : "局部修复"
         if request.outputSize == .fullHD {
             return features + " · " + request.outputSize.title + (request.performance == .quiet ? " · 低负载" : " · 画质优先")

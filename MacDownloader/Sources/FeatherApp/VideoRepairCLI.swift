@@ -28,14 +28,17 @@ enum VideoRepairCLI {
         do {
             guard let path = argument("--video-repair-integration-test"), !path.isEmpty,
                   let destinationPath = argument("--destination"), !destinationPath.isEmpty else {
-                throw VideoRepairError.operation("Usage: --video-repair-integration-test INPUT --destination PATH [--mode both|enhance|mosaic] [--performance balanced|quality|quiet] [--output-size source|fullHD] [--cancel-after SECONDS]")
+                throw VideoRepairError.operation("Usage: --video-repair-integration-test INPUT --destination PATH [--repair-engine realesrgan|seedvr2] [--mode both|enhance|mosaic] [--performance balanced|quality|quiet] [--output-size source|hd720|fullHD] [--prepare-components-only] [--cancel-after SECONDS]")
             }
             let mode = argument("--mode") ?? "both"
+            guard let engineKind = VideoRepairEngineKind(rawValue: argument("--repair-engine") ?? "realesrgan") else {
+                throw VideoRepairError.operation("--repair-engine must be realesrgan or seedvr2")
+            }
             guard let performance = VideoRepairPerformance(rawValue: argument("--performance") ?? "balanced") else {
                 throw VideoRepairError.operation("--performance must be balanced, quality, or quiet")
             }
             guard let outputSize = VideoRepairOutputSize(rawValue: argument("--output-size") ?? "source") else {
-                throw VideoRepairError.operation("--output-size must be source or fullHD")
+                throw VideoRepairError.operation("--output-size must be source, hd720, or fullHD")
             }
             guard ["both", "enhance", "mosaic"].contains(mode) else { throw VideoRepairError.operation("--mode must be both, enhance, or mosaic") }
             let cancelAfter: Double?
@@ -45,9 +48,28 @@ enum VideoRepairCLI {
                 }
                 cancelAfter = seconds
             } else { cancelAfter = nil }
+            if arguments.contains("--prepare-components-only") {
+                let store = VideoRepairComponentStore(supportDirectory: AppTools.supportDirectory,
+                    resourcesDirectory: Bundle.main.resourceURL ?? Bundle.main.bundleURL, engine: engineKind)
+                let install = Task.detached(priority: .utility) {
+                    try await store.ensureInstalled { event in
+                        if let data = try? JSONEncoder().encode(event) {
+                            fputs("FEATHER_AI_COMPONENT_EVENT:" + String(decoding: data, as: UTF8.self) + "\n", stderr); fflush(stderr)
+                        }
+                    }
+                }
+                let timer = cancelAfter.map { seconds in Task {
+                    do { try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000)); install.cancel() } catch { }
+                } }
+                defer { timer?.cancel() }
+                let directory = try await withTaskCancellationHandler { try await install.value } onCancel: { install.cancel() }
+                emit(["success": true, "component": directory.path, "repairEngine": engineKind.rawValue,
+                      "elapsedSeconds": Date().timeIntervalSince(started)])
+                return 0
+            }
             let request = VideoRepairRequest(input: URL(fileURLWithPath: path), destination: URL(fileURLWithPath: destinationPath, isDirectory: true),
-                enhance: mode != "mosaic", repairMosaic: mode != "enhance", performance: performance, outputSize: outputSize)
-            let runtime = try VideoRepairRuntime.discover(bundle: .main)
+                enhance: mode != "mosaic", repairMosaic: mode != "enhance", performance: performance, outputSize: outputSize, engine: engineKind)
+            let runtime = try VideoRepairRuntime.discover(bundle: .main, engine: engineKind)
             let engine = VideoRepairEngine(runtime: runtime)
             let receiptURL = request.destination.appendingPathComponent("completion-" + request.id.uuidString + ".json")
             let cancellation = VideoRepairCLICancellation()
