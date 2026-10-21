@@ -6,30 +6,32 @@ IMPORTANT: This file was signed by Sparkle. Any modifications to this file requi
     <link>https://github.com/Chatblanccc/feiyu-downloader/releases</link>
     <description>用户主动检查的 macOS 测试版本更新</description>
     <item>
-      <title>飞羽下载 0.5.2</title>
-      <pubDate>Tue, 20 Oct 2026 01:11:31 +0000</pubDate>
-      <sparkle:version>14</sparkle:version>
-      <sparkle:shortVersionString>0.5.2</sparkle:shortVersionString>
+      <title>飞羽下载 0.5.4</title>
+      <pubDate>Wed, 21 Oct 2026 04:22:16 +0000</pubDate>
+      <sparkle:version>16</sparkle:version>
+      <sparkle:shortVersionString>0.5.4</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <description># 飞羽下载 macOS 0.5.2（build 14）
+      <description># 飞羽下载 macOS 0.5.4（build 16）
 
-本次为 Apple Silicon macOS 测试版，包含此前 0.5.1 的视频修复提速与新的 1080P 精细增强。Windows 仍为 0.4.1，Android 仍为 0.1.0-alpha02；本次不改变它们的版本或更新入口。
+本次为 Apple Silicon macOS 测试版。基础安装包约 **89 MB**，AI 运行环境和模型改为首次使用时按需下载，不再随安装包一起分发。Windows 继续使用 0.4.1，Android 继续使用 0.1.0-alpha02；它们的版本与更新入口保持原样。
 
-- 新增独立“1080P 精细增强”：使用 Real-ESRGAN RRDB x2plus/x4plus，保留 AI 放大后的像素。按横竖方向和原比例放大至 1920×1080 或 1080×1920 范围，非标准比例不拉伸，已有更高分辨率不缩小。完成后显示输入、输出尺寸。
-- 原尺寸默认快速模式仍可使用。规则网格检测改为向量化，CPU 局部修复、GPU 增强和编码通过有界队列并行；根据内存预算限制并发，支持低负载模式。
-- 使用 Mac GPU 的 FP16 推理；GPU 失败时重试完整分块并回退 CPU FP32。增加分块上下文、x2 像素相位对齐和几何校验，保持旧任务及完成凭据兼容。
-- 进度显示实际导出帧数、处理速度和预计剩余时间。处理可取消，导出独立 MP4，保留声音和原文件。
+- **本地 AI 组件按需准备**：常规增强首次下载约 492 MB；SeedVR2 3B 的运行环境与模型合计约 7.56 GB。程序显示下载、校验与安装进度，支持取消、重试和重新准备组件，无需自行安装 Python。准备完成后，视频修复可离线运行，视频推理在本机完成，不上传视频。模型仍占用本机磁盘；后续更新程序可复用相同组件。
+- **新增 SeedVR2 3B 深度清晰（实验）**：面向模糊、低清和压缩画面，默认提供 720P，也可选择保留原尺寸或 1080P。常规增强仍可独立使用；旧修复任务继续按原引擎读取。
+- **处理与恢复**：修复输出独立 MP4，保留声音和原文件；支持进度、取消、查看报告及重开恢复。独立资源监测进程持续检查内存状态，资源不足时停止任务并提示。
+- **包含 0.5.3 的任务记录移除功能**：翻译与字幕、AI 视频修复的最新任务和最近任务均可移除记录。移除仅影响记录，保留原视频、字幕、导出视频和处理报告；正在处理的任务需先停止。
 
-验证包括 40 项下载核心回归、12 项视频修复核心测试、14 项模型测试，以及实际应用的公开视频导出、旋转方向、取消、播放和重开恢复。公开视频实测 480×270 → 1920×1080，150 帧及声音完整，耗时约 198.5 秒（5 秒素材）。强模型改善部分压缩块与边缘，但计算量明显增加；该结果不能代表长片速度、风扇噪声或所有视频的效果。
+常规增强需要 Apple Silicon Mac 和 macOS 13 或更新版本。SeedVR2 需要 **macOS 14 或更新版本及至少 32 GB 统一内存**；视频翻译与字幕仍需要 macOS 26 或更新版本。
 
-1080P 是输出尺寸，不保证恢复原生高清细节。AI 补画与纹理可能不准确或闪烁，自动识别可能漏检、误检，HDR 会转为 SDR。安装包仍为本地 ad-hoc 签名，尚未经过 Apple Developer ID 签名与公证。
+SeedVR2 的清晰纹理由模型推测生成，人脸、文字和小图案可能改变，运动画面仍可能闪烁。真实 3 秒素材在本轮 Apple M5、32 GB 内存机器上约需 20 分钟；这不是其他素材或长片的速度保证。720P、1080P 是输出规格，不能证明恢复了丢失的真实细节。请先用短片对照原片检查效果。
 
-提供 DMG、Sparkle 签名更新归档、对应源码、FFmpeg 对应源码和 SHA-256 清单。用户视频、历史记录、Cookie、私钥及本机测试日志不作为发布资产上传。覆盖安装保留原有应用标识和数据位置。
+本轮在 Apple M5、macOS 26.6.2 上完成实际应用导出、声音和帧数检查、禁网修复、取消清理、界面操作、播放、重开恢复及安装后复查；升级保留视频、任务记录与设置。最低系统版本来自依赖的支持边界，本轮未在 macOS 13/14 或其他 Mac 上进行实机验收。安装包仍为本地 ad-hoc 签名，尚未经过 Apple Developer ID 签名与公证。
+
+提供 `FeiyuDownload-0.5.4-macOS-arm64.dmg`、Sparkle 签名更新归档、对应源码、FFmpeg 对应源码和 SHA-256 清单。用户视频、历史记录、Cookie、私钥和本机测试日志不作为发布资产上传。更新仅替换程序，保留原应用标识和数据位置；已安装的 AI 组件独立保存。
 </description>
-      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.5.2/FeiyuDownload-0.5.2-macOS-arm64.zip" length="562761610" type="application/octet-stream" sparkle:edSignature="o6+MX9UdpH+s7yNowST6RbD/pva2lglwFAF0l3CmqD/udGbLgQe9AYx3Hxy5oL4Z6n2D1oO/rptCgHk8h3T4AQ==" sparkle:os="macos"></enclosure>
+      <enclosure url="https://github.com/Chatblanccc/feiyu-downloader/releases/download/v0.5.4/FeiyuDownload-0.5.4-macOS-arm64.zip" length="84509430" type="application/octet-stream" sparkle:edSignature="bWzhZUWAHkV0WQIz52/MaHuV4FWVqTjSZkotY53lzUMezHtvA8xsq1LiiZy8rdZzx8OEVbzuX8JfKQmV5QkFAw==" sparkle:os="macos"></enclosure>
     </item>
   </channel>
 </rss><!-- sparkle-signatures:
-edSignature: uHh/329sHuTJLT2CgY7nE+eo2W0PSQwX7Lsj4RI4iTNyjUphm39VEoZ6slrYT5AuFxGZih6nnW1kCQJRi0RuBQ==
-length: 3283
+edSignature: kSE0nIuPehJIyiEOE99V4ton5j0nnDzFyFltXaR3/QwhVIhsl/vmiQB/VEV4R2X+j0ji6MCEwCFM9YPeBLVmCA==
+length: 4023
 -->
