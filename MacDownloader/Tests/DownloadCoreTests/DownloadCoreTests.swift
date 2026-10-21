@@ -583,23 +583,45 @@ final class DownloadCoreTests: XCTestCase {
     }
 
     func testRSSBudgetStopsRealAllocatingDescendant() async throws {
+        let folder = temporaryFolder(); defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let source = folder.appendingPathComponent("rss-fixture.c")
+        let allocator = folder.appendingPathComponent("rss-fixture")
+        let ready = folder.appendingPathComponent("parent-recorded-child")
+        // Keep interpreter startup RSS outside this fixture. The parent must
+        // observe both PIDs before allocation: resource sampling precedes pipe
+        // draining, and output is intentionally discarded after a budget error.
+        try #"""
+        #include <signal.h>
+        #include <stdio.h>
+        #include <stdlib.h>
+        #include <unistd.h>
+        int main(int argc, char **argv) {
+            if (argc != 2) return 2;
+            signal(SIGTERM, SIG_IGN);
+            printf("CHILD:%d\n", getpid()); fflush(stdout);
+            while (access(argv[1], F_OK) != 0) usleep(1000);
+            const size_t bytes = 128 * 1024 * 1024;
+            volatile unsigned char *payload = malloc(bytes);
+            if (!payload) return 3;
+            for (size_t i = 0; i < bytes; i += 4096) payload[i] = 1;
+            sleep(20);
+            free((void *)payload);
+            return 0;
+        }
+        """#.write(to: source, atomically: true, encoding: .utf8)
+        let compiled = try await FoundationProcessRunner().run(ProcessCommand(executable: URL(fileURLWithPath: "/usr/bin/clang"),
+            arguments: ["-O0", source.path, "-o", allocator.path], timeout: 30, maximumMemoryBytes: nil))
+        XCTAssertEqual(compiled.exitCode, 0)
         let start = Date(), pids = FixturePIDRecorder()
-        // A shell leader stays small on both CLT and hosted-Xcode machines.
-        // Launch Python as the descendant instead of forking a Python leader:
-        // some hosted Python runtimes exceed the old 32 MiB budget themselves.
-        let script = """
-        printf 'ROOT:%s\\n' "$$"
-        /usr/bin/python3 -c 'import os,signal,time
-        signal.signal(signal.SIGTERM,signal.SIG_IGN)
-        print("CHILD:"+str(os.getpid()),flush=True)
-        payload=bytearray(128*1024*1024)
-        for i in range(0,len(payload),4096): payload[i]=1
-        time.sleep(20)' &
-        wait
-        """
+        let script = "printf 'ROOT:%s\\n' \"$$\"; \"$1\" \"$2\" & wait"
         do {
-            _ = try await FoundationProcessRunner().run(ProcessCommand(executable: URL(fileURLWithPath: "/bin/sh"), arguments: ["-c", script],
-                timeout: 8, maximumMemoryBytes: 96 * 1_024 * 1_024)) { pids.record($0.line) }
+            _ = try await FoundationProcessRunner().run(ProcessCommand(executable: URL(fileURLWithPath: "/bin/sh"),
+                arguments: ["-c", script, "rss-fixture", allocator.path, ready.path],
+                timeout: 8, maximumMemoryBytes: 96 * 1_024 * 1_024)) { output in
+                    pids.record(output.line)
+                    if output.line.hasPrefix("CHILD:") { try? Data().write(to: ready, options: .atomic) }
+                }
             XCTFail("The descendant's real allocated pages must exceed the group budget")
         } catch DownloadError.memoryLimitExceeded { }
         let elapsed = Date().timeIntervalSince(start)
@@ -607,7 +629,8 @@ final class DownloadCoreTests: XCTestCase {
         XCTAssertTrue(pids.values.count >= 2)
         for pid in pids.values { XCTAssertFalse(FixturePIDRecorder.isAlive(pid)) }
         CoreResourceReport.record("rss_limit_real_descendant", elapsed: elapsed,
-            detail: ["rssBudgetBytes": 96 * 1_024 * 1_024, "allocatedTouchedBytes": 128 * 1_024 * 1_024, "sampleIntervalSeconds": 0.5, "allFixturePIDsStopped": true])
+            detail: ["rssBudgetBytes": 96 * 1_024 * 1_024, "allocatedTouchedBytes": 128 * 1_024 * 1_024, "sampleIntervalSeconds": 0.5,
+                     "pidHandshakeBeforeAllocation": true, "allocator": "C volatile page writes", "allFixturePIDsStopped": true])
     }
 
     func testFastExitRaceDoesNotRejectOrLeakFileDescriptors() async throws {
