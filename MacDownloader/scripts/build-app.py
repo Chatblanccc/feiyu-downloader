@@ -2,6 +2,7 @@
 """Build the native app and a drag-to-Applications DMG without global installs."""
 from pathlib import Path
 import base64
+import argparse
 import hashlib
 import json
 import plistlib
@@ -70,7 +71,25 @@ def sign_repair_runtime(directory):
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 
 def main():
-    verify_repair_runtime()
+    global APP
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--app-path', type=Path, help='Separate candidate bundle; preserve the accepted installed application')
+    parser.add_argument('--validation-dir', type=Path, help='Separate candidate evidence and source snapshot')
+    options = parser.parse_args()
+    if options.app_path:
+        APP = options.app_path.expanduser().absolute()
+    components = PROJECT / 'Resources' / 'AIComponents'
+    for name in ['catalog.json', 'catalog-realesrgan.json', 'locked-requirements.txt',
+                 'locked-requirements-realesrgan.txt', 'bootstrap.py']:
+        if not (components / name).is_file():
+            raise SystemExit('Missing on-demand AI catalog/bootstrap: ' + name)
+    for name, requirements in [('catalog.json', 'locked-requirements.txt'),
+                               ('catalog-realesrgan.json', 'locked-requirements-realesrgan.txt')]:
+        catalog = json.loads((components / name).read_text())
+        if catalog['requirementsSHA256'] != hashlib.sha256((components / requirements).read_bytes()).hexdigest():
+            raise SystemExit('AI requirements pin changed: ' + requirements)
+        if catalog.get('policy', {}).get('modelsBundledInApplication') is not False:
+            raise SystemExit('AI models must remain outside the application')
     before_build = source_hashes()
     public_key_path = ROOT / "updates" / "macos" / "public-key.txt"
     if not public_key_path.is_file():
@@ -92,10 +111,10 @@ def main():
     for entry in manifest["files"]:
         if hashlib.sha256((VENDOR / entry["name"]).read_bytes()).hexdigest() != entry["sha256"]:
             raise SystemExit("Tool checksum changed: " + entry["name"])
-    run("swift", "build", "-c", "release", "--arch", "arm64", cwd=PROJECT)
+    run("swift", "build", "-c", "release", "--arch", "arm64", "--jobs", "2", cwd=PROJECT)
     if source_hashes() != before_build:
         raise SystemExit("Mac sources changed while compiling; rebuild the current candidate")
-    snapshot = ROOT / "work" / "validation" / ("v" + VERSION) / "source-snapshot"
+    snapshot = (options.validation_dir if options.validation_dir else ROOT / "work" / "validation" / ("v" + VERSION)) / "source-snapshot"
     if snapshot.exists():
         shutil.rmtree(snapshot)
     for source in source_files():
@@ -141,9 +160,16 @@ def main():
         raise SystemExit("Missing Sparkle license in the verified Swift package artifact")
     shutil.copy2(sparkle_license, resources / "Licenses" / "Sparkle-LICENSE.txt")
     shutil.copy2(VENDOR / "tools-manifest.json", resources / "tools-manifest.json")
-    shutil.copytree(REPAIR, resources / "VideoRepair", symlinks=True,
-                    ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"))
-    sign_repair_runtime(resources / "VideoRepair")
+    # Only catalogs, bootstrap and small worker sources belong in the base app.
+    # Portable Python, native dependencies and all model weights install on demand.
+    for source, name in [(components, 'AIComponents'), (PROJECT / 'VideoRepairWorker', 'VideoRepairWorker'),
+                         (PROJECT / 'SeedVR2Worker', 'SeedVR2Worker')]:
+        shutil.copytree(source, resources / name, symlinks=True,
+                        ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '*.pyo'))
+    forbidden = [path for path in resources.rglob('*') if path.is_file() and
+                 (path.suffix in {'.pth', '.pt', '.safetensors', '.whl'} or path.name in {'python3', 'python3.11'})]
+    if forbidden:
+        raise SystemExit('Base application unexpectedly contains AI dependencies or weights: ' + str(forbidden[0]))
     # Local validation reports can contain private source URLs and do not describe
     # this release. Keep them outside the distributable application bundle.
     iconset = ROOT / "work" / "Feather.iconset"

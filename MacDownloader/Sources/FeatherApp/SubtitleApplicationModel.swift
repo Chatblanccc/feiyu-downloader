@@ -208,6 +208,23 @@ final class SubtitleApplicationModel: ObservableObject {
         style = item.request.style
     }
 
+    func canRemove(_ id: UUID) -> Bool {
+        activeID != id && records.first(where: { $0.id == id }).map { !$0.state.active } == true
+    }
+
+    func remove(_ id: UUID) {
+        guard canRemove(id) else { return }
+        let previous = records
+        records.removeAll { $0.id == id }
+        do {
+            try persist()
+            try? FileManager.default.removeItem(at: receiptURL(id))
+        } catch {
+            records = previous
+            notice = "字幕任务记录未能移除：\(error.localizedDescription)。请稍后重试。"
+        }
+    }
+
     func reveal(_ result: SubtitleExportResult) { NSWorkspace.shared.activateFileViewerSelecting([result.video ?? result.subtitles]) }
     func openVideo(_ result: SubtitleExportResult) { if let video = result.video { NSWorkspace.shared.open(video) } }
     func openSubtitles(_ result: SubtitleExportResult) {
@@ -289,8 +306,7 @@ final class SubtitleApplicationModel: ObservableObject {
         try fm.createDirectory(at: historyURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try fm.createDirectory(at: receiptsURL, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         try fm.setAttributes([.posixPermissions: 0o700], ofItemAtPath: receiptsURL.path)
-        try JSONEncoder().encode(Array(records.prefix(200))).write(to: historyURL, options: .atomic)
-        try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: historyURL.path)
+        try TaskHistoryStorage.write(JSONEncoder().encode(Array(records.prefix(200))), to: historyURL)
     }
     private func saveNoticeIfNeeded() {
         do { try persist() }

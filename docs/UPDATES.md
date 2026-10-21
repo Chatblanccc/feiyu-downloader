@@ -8,6 +8,8 @@
 
 更新仅替换程序。macOS 保持 `io.feather.videodownloader` 与 Application Support/FeatherDownloader，Windows 保持原 appId、产品名和 userData 路径。不要在后续版本随意修改这些标识；数据格式发生变化时提供兼容迁移。
 
+macOS 0.5.4 起，本地 AI 运行环境和模型按需安装到 Application Support/FeatherDownloader/AI，基础 app 不再内嵌这些大文件。组件下载和安装也属于正在进行的工作，更新时需等待结束或取消。组件有独立版本与完整性清单，更新 app 不删除已安装组件或用户媒体；新清单需要新组件时，先验证并安装成功再使用，旧任务记录未保存引擎字段时继续按常规增强读取。
+
 没有更新功能的旧版本，需要覆盖安装一次带更新功能的版本，无需先卸载。Windows ARM64 和 Intel Mac 暂不提供独立安装包。
 
 ## 两个平台
@@ -45,26 +47,29 @@ python3 scripts/prepare-release.py \
 
 ## 单独准备 macOS 更新
 
-例如 macOS 更新到 0.5.2、Windows 继续使用 0.4.1、Android 继续使用 alpha02 时，保持 Windows 和 Android 的版本与安装包原样。先验收 Mac 应用、DMG 和对应源码包，提交本次源码及发布说明，然后显式指定：
+本次 macOS 更新到 **0.5.4（build 16）**，Windows 继续使用 0.4.1，Android 继续使用 0.1.0-alpha02，保持它们的版本与安装包原样。先验收 Mac 应用、DMG 和对应源码包，提交本次源码及[发布说明](releases/0.5.4.md)，然后显式指定：
 
 ```sh
 python3 scripts/prepare-release.py \
   --mac-only \
-  --mac-app outputs/飞羽下载.app \
+  --mac-app /Applications/飞羽下载.app \
   --sparkle-tools work/update-tools/bin \
-  --notes docs/releases/0.5.2.md \
+  --notes docs/releases/0.5.4.md \
+  --output work/releases/v0.5.4-online \
   --third-party-source work/ffmpeg-build/ffmpeg-9.0.2.tar.xz \
-  --extra-asset outputs/飞羽下载-0.5.2-AppleSilicon.dmg \
-  --extra-asset outputs/飞羽下载-0.5.2-macOS源码.zip
+  --extra-asset outputs/releases/v0.5.4/FeiyuDownload-0.5.4-macOS-arm64.dmg \
+  --extra-asset outputs/releases/v0.5.4/FeiyuDownload-0.5.4-macOS-Source.zip
 ```
 
-以上 DMG 和源码路径应替换为本次已验收文件的实际路径。`--extra-asset` 可以重复提供，也可加入适合公开的验收证据；文件必须为常规文件，不能使用符号链接、隐藏或含控制字符的文件名，且不得与生成的资产重名。`--third-party-source` 仍然必需。输出目录必须为空，包含已签名文件的目录不会被覆盖。
+以上 app、DMG、源码、签名工具与第三方源码路径须与本次已验收文件的实际位置一致。0.5.4 的本地交付目录已有已验收 DMG 和源码，因此示例使用另一个空目录生成线上更新资产，不覆盖本地交付文件。`--extra-asset` 可以重复提供，也可加入适合公开的验收证据；文件必须为常规文件，不能使用符号链接、隐藏或含控制字符的文件名，且不得与生成的资产重名。`--third-party-source` 仍然必需。输出目录必须为空，包含已签名文件的目录不会被覆盖。
 
 此模式只检查 Mac 的版本、build、应用身份、公钥及签名，生成并验证更新 ZIP 和整个 appcast 的 Ed25519 签名，并将附加资产纳入 SHA256 清单。它不会读取或改写 Windows 更新描述文件。清单包含 `platforms: ["macos"]`、`prerelease: true`、`makeLatest: false` 和精确的 `sourceCommit`。
 
-`stage-release.py` 会按清单的平台检查对应提交中的版本。Mac 单平台清单只能建立带 `--prerelease --latest=false` 的草稿。发布草稿时保留这两个设置，例如在后续验收完成后使用 `gh release edit v0.5.2 --repo Chatblanccc/feiyu-downloader --draft=false --prerelease --latest=false`。不要把 Mac 单平台发布改成 GitHub Latest，也不要把 Windows 0.4.1 的版本或哈希改写成 0.5.2。
+`stage-release.py` 会按清单的平台检查对应提交中的版本。Mac 单平台清单只能建立带 `--prerelease --latest=false` 的草稿。发布草稿时保留这两个设置，例如在后续验收完成后使用 `gh release edit v0.5.4 --repo Chatblanccc/feiyu-downloader --draft=false --prerelease --latest=false`。不要把 Mac 单平台发布改成 GitHub Latest，也不要把 Windows 0.4.1 的版本或哈希改写成 0.5.4。
 
-Mac 是否收到更新由固定地址的签名 appcast 决定，GitHub 的预发行标签不会阻止 appcast 中列出的版本更新；Windows 稳定版则继续读取现有 GitHub Latest 的 `latest.yml`。必须先公开验证新的 Mac 资产，再把同批已签名 appcast 原样更新到 main。随后核对 Mac 更新源指向 0.5.2、GitHub Latest 仍指向 Windows 所在的正式版、Android 独立发布仍可下载。新安装包和对应源码公开验收后，再按每个平台仅保留最新已验收安装版本的规则清理旧交付资产。
+Mac 是否收到更新由固定地址的签名 appcast 决定，GitHub 的预发行标签不会阻止 appcast 中列出的版本更新；Windows 稳定版则继续读取现有 GitHub Latest 的 `latest.yml`。必须先公开验证新的 Mac 资产，再把同批已签名 appcast 原样更新到 main。随后核对 Mac 更新源的显示版本为 0.5.4、build 为 16，更新归档的 URL、字节数及 Ed25519 签名均与公开文件匹配；GitHub Latest 仍指向 Windows 所在的正式版，Android 独立发布仍可下载。新安装包和对应源码公开验收后，再按每个平台仅保留最新已验收安装版本的规则清理旧交付资产。
+
+0.5.4 的基础 DMG 约 89 MB，常规 AI 组件首次另下约 492 MB，SeedVR2 组件首次另下约 7.56 GB；不得将用户本机已安装的模型、缓存或私有验收日志追加为 Release 资产。SeedVR2 是有较高内存要求、可能改写细节且耗时较长的实验选项；公开说明需保留系统要求、性能实测和未公证边界。安装、运行与记录保留验收不能替代线上 appcast、公开资产及旧客户端检查更新的验证。
 
 不指定 `--mac-only` 时，`--windows-dir` 仍为必需参数，双平台版本、Windows SHA512／实际字节数和更新文件名等现有验证全部保留。没有 `platforms` 字段的旧清单仍按 Mac + Windows 双平台验证。
 
@@ -78,7 +83,7 @@ python3 scripts/stage-release.py outputs/releases/v0.4.0
 
 这只创建 **Draft Release**，检查更新的用户看不到草稿。上传清单之外的文件不会自动被带上去。
 
-确认安装包、源码许可和验收结果后，将草稿发布为正式稳定 Release，再把同一批资产中的已签名 `appcast.xml` 原样更新到 `updates/macos/appcast.xml` 并合并到 main。最后分别使用较旧版本的真实安装检查升级，核对新版本号及原数据。不要先更新线上 appcast 再上传不存在的安装包，也不要编辑签名后的 XML。若发布失败，旧安装继续可用；下载源无法连接时应明确报错，不能显示为“已是最新”。
+确认安装包、源码许可和验收结果后，双平台发布可将草稿发布为正式稳定 Release；Mac 单平台发布保留预发行和 `latest=false`，按上一节处理。再把同一批资产中的已签名 `appcast.xml` 原样更新到 `updates/macos/appcast.xml` 并合并到 main。最后使用较旧版本的真实安装检查更新，核对版本、更新说明及原数据。检查更新、下载或实际安装各自记录验收范围；用户仅要求准备更新入口时，不代替用户确认安装。不要先更新线上 appcast 再上传不存在的安装包，也不要编辑签名后的 XML。若发布失败，旧安装继续可用；下载源无法连接时应明确报错，不能显示为“已是最新”。
 
 第一版仅提供完整更新包；差分更新、镜像、后台定期提醒可在完成真实升级验收后另行添加。
 

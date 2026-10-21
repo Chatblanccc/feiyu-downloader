@@ -1,3 +1,4 @@
+import ast
 import base64
 import contextlib
 import importlib.util
@@ -9,6 +10,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
+from urllib.parse import urlsplit
 
 spec = importlib.util.spec_from_file_location('release', Path(__file__).resolve().parents[1] / 'scripts/prepare-release.py')
 release = importlib.util.module_from_spec(spec)
@@ -16,6 +18,73 @@ spec.loader.exec_module(release)
 stage_spec = importlib.util.spec_from_file_location('stage_release', Path(__file__).resolve().parents[1] / 'scripts/stage-release.py')
 stage = importlib.util.module_from_spec(stage_spec)
 stage_spec.loader.exec_module(stage)
+
+
+class OnDemandAIReleaseChecks(unittest.TestCase):
+    """Cross-check shipped metadata without downloading components or importing AI libraries."""
+
+    project = Path(__file__).resolve().parents[1] / 'MacDownloader'
+    resources = project / 'Resources/AIComponents'
+
+    def catalogs(self):
+        for name, requirements in [('catalog.json', 'locked-requirements.txt'),
+                                   ('catalog-realesrgan.json', 'locked-requirements-realesrgan.txt')]:
+            with self.subTest(catalog=name):
+                yield json.loads((self.resources / name).read_text()), self.resources / requirements
+
+    def test_shipped_catalogs_match_offline_wheel_locks_and_download_budgets(self):
+        for catalog, requirements in self.catalogs():
+            self.assertEqual(release.digest(requirements).hex(), catalog['requirementsSHA256'])
+            expected = {f"{item['name']}=={item['version']} --hash=sha256:{item['sha256']}"
+                        for item in catalog['downloads'] if item['kind'] == 'wheel'}
+            actual = {line.strip() for line in requirements.read_text().splitlines()
+                      if line.strip() and not line.startswith('#')}
+            self.assertEqual(actual, expected)
+            self.assertEqual(catalog['totalDownloadBytes'], sum(item['bytes'] for item in catalog['downloads']))
+            self.assertEqual(catalog['modelDownloadBytes'], sum(item['bytes'] for item in catalog['downloads'] if item['kind'] == 'model'))
+            self.assertEqual(catalog['runtimeDownloadBytes'] + catalog['modelDownloadBytes'], catalog['totalDownloadBytes'])
+            self.assertEqual(len({item['id'] for item in catalog['downloads']}), len(catalog['downloads']))
+            self.assertEqual(len({item['filename'].casefold() for item in catalog['downloads']}), len(catalog['downloads']))
+            interpreters = [item for item in catalog['downloads'] if item['kind'] == 'python']
+            self.assertEqual(len(interpreters), 1)
+            self.assertEqual(interpreters[0]['archiveAudit']['status'], 'passed')
+            for item in catalog['downloads']:
+                self.assertTrue(release.safe_asset_name(item['filename']))
+                self.assertRegex(item['sha256'], r'^[a-f0-9]{64}$')
+                self.assertIsInstance(item['bytes'], int)
+                self.assertGreater(item['bytes'], 0)
+                url = urlsplit(item['url'])
+                self.assertEqual(url.scheme, 'https')
+                self.assertTrue(url.hostname)
+                self.assertIsNone(url.username)
+                self.assertIsNone(url.password)
+
+    def test_shipped_licenses_and_legacy_worker_match_catalog_pins(self):
+        for catalog, _ in self.catalogs():
+            for field, directory in [('licenseFiles', self.resources / 'licenses'),
+                                     ('workerFiles', self.project / 'VideoRepairWorker')]:
+                for item in catalog.get(field, []):
+                    self.assertTrue(release.safe_asset_name(item['filename']))
+                    path = directory / item['filename']
+                    self.assertTrue(path.is_file() and not path.is_symlink())
+                    self.assertEqual(path.stat().st_size, item['bytes'])
+                    self.assertEqual(release.digest(path).hex(), item['sha256'])
+
+    def test_base_app_metadata_keeps_models_external_and_python_sources_parse(self):
+        for catalog, _ in self.catalogs():
+            self.assertEqual(catalog['policy'], {
+                'networkDuringInstallationOnly': True, 'uploadsMedia': False,
+                'globalPythonRequired': False, 'modelsBundledInApplication': False})
+        directories = [self.resources, self.project / 'SeedVR2Worker', self.project / 'VideoRepairWorker']
+        forbidden = {'.whl', '.safetensors', '.pt', '.pth', '.dylib'}
+        for directory in directories:
+            for path in directory.rglob('*'):
+                if not path.is_file() or '__pycache__' in path.parts:
+                    continue
+                self.assertNotIn(path.suffix.lower(), forbidden, str(path))
+                if path.suffix == '.py':
+                    ast.parse(path.read_text(), filename=str(path))
+        self.assertTrue((self.project / 'SeedVR2Worker/resource_guard.py').is_file())
 
 
 class ReleaseChecks(unittest.TestCase):

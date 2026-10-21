@@ -21,10 +21,23 @@ def app_identity(app):
         shutil.copy2(executable, binary)
         subprocess.run(['codesign','--remove-signature',str(binary)],check=True,capture_output=True)
         code_hash = sha(binary)
+    resources = app / 'Contents/Resources'
+    embedded = resources / 'VideoRepair/manifest.json'
+    if embedded.is_file():
+        runtime_hash = sha(embedded)
+    else:
+        # On-demand releases identify the exact installer, pins and licenses.
+        # Installed model content is separately attested by the component receipt.
+        digest = hashlib.sha256()
+        for path in sorted((resources / 'AIComponents').rglob('*')):
+            if path.is_file() and '__pycache__' not in path.parts:
+                digest.update(str(path.relative_to(resources)).encode('utf-8') + b'\0')
+                digest.update(path.read_bytes())
+        runtime_hash = digest.hexdigest()
     return {'version':info['CFBundleShortVersionString'], 'build':str(info['CFBundleVersion']),
             'bundleIdentifier':info['CFBundleIdentifier'], 'unsignedBinarySHA256':code_hash,
             'binarySHA256AtObservation':sha(executable),
-            'runtimeManifestSHA256':sha(app / 'Contents/Resources/VideoRepair/manifest.json'),
+            'runtimeManifestSHA256':runtime_hash,
             'toolsManifestSHA256':sha(app / 'Contents/Resources/tools-manifest.json'),
             'sourceManifestSHA256':sha(app / 'Contents/Resources/source-manifest.json')}
 

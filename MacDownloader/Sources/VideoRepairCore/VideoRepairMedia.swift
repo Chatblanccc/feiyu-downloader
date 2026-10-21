@@ -5,8 +5,10 @@ public enum VideoRepairMedia {
     /// Uses display-oriented dimensions and the same even-pixel rounding as the worker.
     /// Already larger sources are preserved rather than silently reduced to 1080P.
     public static func outputDimensions(width: Int, height: Int, outputSize: VideoRepairOutputSize) -> (width: Int, height: Int) {
-        guard outputSize == .fullHD, width > 0, height > 0 else { return (width, height) }
-        let bounds = width >= height ? (width: 1920, height: 1080) : (width: 1080, height: 1920)
+        guard outputSize != .source, width > 0, height > 0 else { return (width, height) }
+        let longEdge = outputSize == .hd720 ? 1280 : 1920
+        let shortEdge = outputSize == .hd720 ? 720 : 1080
+        let bounds = width >= height ? (width: longEdge, height: shortEdge) : (width: shortEdge, height: longEdge)
         guard width < bounds.width, height < bounds.height else { return (width, height) }
         // Integer ratios avoid losing two pixels when a mathematically exact
         // boundary becomes 1919.9999999999998 in floating-point arithmetic.
@@ -78,6 +80,7 @@ public enum VideoRepairMedia {
         guard output.width == expected.width, output.height == expected.height,
               abs(output.duration - input.duration) <= tolerance,
               abs(output.videoDuration - input.videoDuration) <= tolerance,
+              abs(output.videoFrameCount - input.videoFrameCount) <= 2,
               abs(Double(output.videoFrameCount) - (input.videoDuration * output.frameRate).rounded()) <= 2,
               output.audioDurations.count == input.audioDurations.count else { throw VideoRepairError.invalidWorkerOutput }
         for (original, repaired) in zip(input.audioDurations, output.audioDurations) {
